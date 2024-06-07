@@ -18,33 +18,36 @@ import matplotlib.pyplot as plt
 import time
 
 class ErgodicTrajectoryOpt(object):
-    def __init__(self, initpos, pmap) -> None:
-        time_horizon=50
-        self.basis           = BasisFunc(n_basis=[5,5])
+    def __init__(self, initpos, pmap, num_agents, bounds) -> None:
+        time_horizon=100
+        self.basis           = BasisFunc(n_basis=[8,8])
         self.erg_metric      = ErgodicMetric(self.basis)
-        self.robot_model     = SingleIntegrator()
-        n,m = self.robot_model.n, self.robot_model.m
+        self.robot_model     = SingleIntegrator(num_agents)
         self.target_distr    = TargetDistribution(pmap)
+        n,m,N = self.robot_model.n, self.robot_model.m, self.robot_model.N
         opt_args = {
             'x0' : np.array(initpos),
             'xf' : np.array(initpos),
             'phik' : get_phik(self.target_distr.evals, self.basis)
         }
         x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
-        u = np.zeros((time_horizon, self.robot_model.m))
-        self.init_sol = np.concatenate([x, u], axis=1) 
+        u = np.zeros((time_horizon, N, m))
+        self.init_sol = np.concatenate([x, u], axis=2) 
 
         @vmap
         def emap(x):
-            """ Function that maps states to workspace """
-            return np.array([(x[0]+50)/100, (x[1]+50)/100])
+            return np.array([(x[0])/(bounds[0,1]-bounds[0,0]), 
+                             (x[1])/(bounds[1,1]-bounds[1,0])])
+            #return x[:2]
+
+        
         def barrier_cost(e):
             """ Barrier function to avoid robot going out of workspace """
             return (np.maximum(0, e-1) + np.maximum(0, -e))**2
         @jit
         def loss(z, args):
             """ Traj opt loss function, not the same as erg metric """
-            x, u = z[:, :n], z[:, n:]
+            x, u = z[:, :, :n], z[:, :, n:]
             phik = args['phik']
             e = emap(x)
             ck = get_ck(e, self.basis)
@@ -54,21 +57,21 @@ class ErgodicTrajectoryOpt(object):
 
         def eq_constr(z, args):
             """ dynamic equality constraints """
-            x, u = z[:, :n], z[:, n:]
+            x, u = z[:, :, :n], z[:, :, n:]
             x0 = args['x0']
             xf = args['xf']
-            return np.vstack([
-                x[0]-x0, 
-                x[1:,:]-vmap(self.robot_model.f)(x[:-1,:], u[:-1,:]),
-                x[-1] - xf
+            return np.concatenate([
+                (x[0]-x0).flatten(), 
+                (x[1:,:]-vmap(self.robot_model.f)(x[:-1,:], u[:-1,:])).flatten(),
+                (x[-1] - xf).flatten()
             ])
 
-        def ineq_constr(z,args):
-            """ control inequality constraints"""
-            x, u = z[:, :n], z[:, n:]
-            _g=abs(u)-.05
-            #_g=np.zeros((200, 0))
-            return _g
+        def ineq_constr(z):
+            x, u = z[:, :, :n], z[:, :, n:]
+            e = emap(x)
+            ine1 = np.maximum(0, e-1) + np.maximum(0, -e)
+            ine2 = np.abs(u) - 20.
+            return np.concatenate([ine1.flatten(), ine2.flatten()])
 
         self.solver = AugmentedLagrangian(
                                             self.init_sol,
