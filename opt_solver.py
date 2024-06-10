@@ -18,7 +18,7 @@ class AugmentedLagrangian(object):
         self.eq_constr   = eq_constr
         self.ineq_constr = ineq_constr
         _eq_constr       = eq_constr(x0, args)
-        _ineq_constr     = ineq_constr(x0)
+        _ineq_constr     = ineq_constr(x0, args)
         lam = np.zeros(_eq_constr.shape)
         mu  = np.zeros(_ineq_constr.shape)
         self._x_shape = x0.shape
@@ -32,7 +32,7 @@ class AugmentedLagrangian(object):
             lam = solution['lam']
             mu  = solution['mu']
             _eq_constr   = eq_constr(x, args)
-            _ineq_constr = ineq_constr(x)
+            _ineq_constr = ineq_constr(x, args)
             return loss(x, args) \
                 + np.sum(lam * _eq_constr + 0.5 * (_eq_constr)**2) \
                 + 0.5 * np.sum(np.maximum(0., mu + _ineq_constr)**2 - mu**2)
@@ -47,7 +47,7 @@ class AugmentedLagrangian(object):
             avg_sq_grad = avg_sq_grad * gamma + np.square(_dldx['x']) * (1. - gamma)
             solution['x']   = solution['x'] - step_size * _dldx['x'] / np.sqrt(avg_sq_grad + eps)
             solution['lam'] = solution['lam'] + c*eq_constr(solution['x'], args)
-            solution['mu']  = np.maximum(0, solution['mu'] + c*ineq_constr(solution['x']))
+            solution['mu']  = np.maximum(0, solution['mu'] + c*ineq_constr(solution['x'], args))
             return solution, _val, avg_sq_grad
 
         self.lagrangian      = lagrangian
@@ -73,15 +73,3 @@ class AugmentedLagrangian(object):
             if _eps < eps:
                 print('done in ', k, ' iterations')
                 break
-
-'''
-if __name__=='__main__':
-    def f(x, args=None) : return 13*x[0]**2 + 10*x[0]*x[1] + 7*x[1]**2 + x[0] + x[1]
-    def g(x, args) : return np.array([2*x[0]-5*x[1]-2])
-    def h(x, args) : return x[0] + x[1] -1
-
-    x0 = np.array([.5,-0.3])
-    opt = AugmentedLagrangian(x0,f,g,h, step_size=0.1)
-    opt.solve(max_iter=1000)
-    sol = opt.get_solution()
-'''

@@ -2,7 +2,7 @@ import jax.numpy as np
 
 class SingleIntegrator(object):
     def __init__(self, N) -> None:        # N = the number of drones
-        self.dt = .1   # timestep
+        self.dt = 1   # timestep
         self.n = 2      # dimensionality of the states (x, y, z) would be 3
         self.m = 2      # dimensionality of the controls (vx, vy, vz) would be 3
         self.N = N
@@ -18,4 +18,5 @@ class SingleIntegrator(object):
             for i in range(self.N):
                 x2.append(_f(x1[i,:], u1[i,:]))
             return np.stack(x2)
+        self._f = _f
         self.f = f

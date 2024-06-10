@@ -16,18 +16,18 @@ from target_distribution import TargetDistribution
 from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import time
-
+    
 class ErgodicTrajectoryOpt(object):
-    def __init__(self, initpos, pmap, num_agents, bounds) -> None:
+    def __init__(self, initpos, pmap, num_agents) -> None:
         time_horizon=100
-        self.basis           = BasisFunc(n_basis=[8,8])
+        self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
         self.robot_model     = SingleIntegrator(num_agents)
-        self.target_distr    = TargetDistribution(pmap)
         n,m,N = self.robot_model.n, self.robot_model.m, self.robot_model.N
+        self.target_distr    = TargetDistribution(pmap)
         opt_args = {
-            'x0' : np.array(initpos),
-            'xf' : np.array(initpos),
+            'x0' : initpos,
+            'xf' : np.zeros((N, 2)),
             'phik' : get_phik(self.target_distr.evals, self.basis)
         }
         x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
@@ -36,11 +36,8 @@ class ErgodicTrajectoryOpt(object):
 
         @vmap
         def emap(x):
-            return np.array([(x[0])/(bounds[0,1]-bounds[0,0]), 
-                             (x[1])/(bounds[1,1]-bounds[1,0])])
-            #return x[:2]
-
-        
+            """ Function that maps states to workspace """
+            return np.array([(x[0]+50)/100, (x[1]+50)/100])
         def barrier_cost(e):
             """ Barrier function to avoid robot going out of workspace """
             return (np.maximum(0, e-1) + np.maximum(0, -e))**2
@@ -50,13 +47,13 @@ class ErgodicTrajectoryOpt(object):
             x, u = z[:, :, :n], z[:, :, n:]
             phik = args['phik']
             e = emap(x)
-            ck = get_ck(e, self.basis)
+            ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
             return 100*self.erg_metric(ck, phik) \
                     + 0.01 * np.mean(u**2) \
                     + np.sum(barrier_cost(e))
 
         def eq_constr(z, args):
-            """ dynamic equality constraints """
+            """ dynamic equality constriants """
             x, u = z[:, :, :n], z[:, :, n:]
             x0 = args['x0']
             xf = args['xf']
@@ -66,12 +63,12 @@ class ErgodicTrajectoryOpt(object):
                 (x[-1] - xf).flatten()
             ])
 
-        def ineq_constr(z):
-            x, u = z[:, :, :n], z[:, :, n:]
-            e = emap(x)
-            ine1 = np.maximum(0, e-1) + np.maximum(0, -e)
-            ine2 = np.abs(u) - 20.
-            return np.concatenate([ine1.flatten(), ine2.flatten()])
+        def ineq_constr(z,args):
+            """ control inequality constraints"""
+            x, u = z[:, :n], z[:, n:]
+            _g=abs(u)-10
+            #_g=np.zeros((200, 0))
+            return _g
 
         self.solver = AugmentedLagrangian(
                                             self.init_sol,

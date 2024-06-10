@@ -39,7 +39,6 @@ class BasisFunc(object):
         ])
 
         self._fk = lambda k, x: np.prod(np.cos(x*k))
-
         self.fk_kvmap = vmap(self._fk, in_axes=(0, None))
         self.fk_xvmap = vmap(self._fk, in_axes=(None, 0))
         # self.fk_vmap = partial(self.fk_kvmap, np.array([0.1,0.2]))
