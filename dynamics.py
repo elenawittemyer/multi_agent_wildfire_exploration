@@ -8,7 +8,7 @@ class SingleIntegrator(object):
         self.N = N
         B = np.array([
                 [1.,0.],
-                [0.,1.]
+                [0.,1.],
             ])
         def _f(x, u):
             return x + self.dt*B@u

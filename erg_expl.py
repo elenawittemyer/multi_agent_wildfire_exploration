@@ -19,7 +19,7 @@ import time
     
 class ErgodicTrajectoryOpt(object):
     def __init__(self, initpos, pmap, num_agents) -> None:
-        time_horizon=100
+        time_horizon=50
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
         self.robot_model     = SingleIntegrator(num_agents)
@@ -34,10 +34,10 @@ class ErgodicTrajectoryOpt(object):
         u = np.zeros((time_horizon, N, m))
         self.init_sol = np.concatenate([x, u], axis=2) 
 
-        @vmap
-        def emap(x):
-            """ Function that maps states to workspace """
-            return np.array([(x[0]+50)/100, (x[1]+50)/100])
+        def _emap(x):
+            return np.array([(x+50)/100])
+        emap = vmap(_emap, in_axes=0)
+
         def barrier_cost(e):
             """ Barrier function to avoid robot going out of workspace """
             return (np.maximum(0, e-1) + np.maximum(0, -e))**2
@@ -46,7 +46,7 @@ class ErgodicTrajectoryOpt(object):
             """ Traj opt loss function, not the same as erg metric """
             x, u = z[:, :, :n], z[:, :, n:]
             phik = args['phik']
-            e = emap(x)
+            e = np.squeeze(emap(x))
             ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
             return 100*self.erg_metric(ck, phik) \
                     + 0.01 * np.mean(u**2) \
@@ -65,9 +65,9 @@ class ErgodicTrajectoryOpt(object):
 
         def ineq_constr(z,args):
             """ control inequality constraints"""
-            x, u = z[:, :n], z[:, n:]
+            x, u = z[:, :, :n], z[:, :, n:]
             _g=abs(u)-10
-            #_g=np.zeros((200, 0))
+            #_g=np.zeros(u.shape)
             return _g
 
         self.solver = AugmentedLagrangian(
@@ -80,3 +80,22 @@ class ErgodicTrajectoryOpt(object):
                                             c=1.0
                     )
         # self.solver.solve()
+
+'''
+x = np.linspace(np.array([[10., 37.], [-15., 1.], [20. , -18.], [8, -17], [38, 23]]),
+                np.zeros((5,2)), 100, endpoint=True)
+
+def _emap(x):
+    return np.array([(x+50)/100])
+emap = vmap(_emap, in_axes=0)
+
+@vmap 
+def emap_des(x):
+    return np.array([(x[0]+50)/100, (x[1]+50)/100, (x[2]+50)/100, (x[3]+50)/100, (x[4]+50)/100])
+
+N=5
+a = emap_des(x)
+b = emap(x)[:,0]
+b = np.squeeze(b)
+print(0)
+'''
