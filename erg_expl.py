@@ -19,7 +19,7 @@ import time
     
 class ErgodicTrajectoryOpt(object):
     def __init__(self, initpos, pmap, num_agents) -> None:
-        time_horizon=50
+        time_horizon=40
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
         self.robot_model     = SingleIntegrator(num_agents)
@@ -27,14 +27,17 @@ class ErgodicTrajectoryOpt(object):
         self.target_distr    = TargetDistribution(pmap)
         opt_args = {
             'x0' : initpos,
-            'xf' : np.zeros((N, 2)),
+            'xf' : initpos,
+            #'xf' : np.zeros((N, 2)),
             'phik' : get_phik(self.target_distr.evals, self.basis)
         }
+        ''' Initialize state '''
         x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
         u = np.zeros((time_horizon, N, m))
         self.init_sol = np.concatenate([x, u], axis=2) 
 
         def _emap(x):
+            ''' Map state space to exploration space '''
             return np.array([(x+50)/100])
         emap = vmap(_emap, in_axes=0)
 
@@ -66,8 +69,7 @@ class ErgodicTrajectoryOpt(object):
         def ineq_constr(z,args):
             """ control inequality constraints"""
             x, u = z[:, :, :n], z[:, :, n:]
-            _g=abs(u)-10
-            #_g=np.zeros(u.shape)
+            _g=abs(u)-10 # TODO: does this term actually control step size
             return _g
 
         self.solver = AugmentedLagrangian(

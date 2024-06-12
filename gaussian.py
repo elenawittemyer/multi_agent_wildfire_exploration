@@ -1,8 +1,8 @@
 
 # Importing Numpy package
-import numpy as np
+import jax.numpy as np
 import random
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
  
 def gaussian_filter(kernel_size, sigma=0.3, muu=0):
  
@@ -56,9 +56,9 @@ def gaussian(size, x0, y0, radius):
 
     return gaussian
  
-def gaussian_measurement(size, x0, y0, eff):
-    rad = .05*size*eff
-    peak_reduction = -1*eff*gaussian(size, x0, y0, rad)
+def gaussian_measurement(size, x0, y0, spread):
+    rad = size*spread
+    peak_reduction = -1*gaussian(size, x0, y0, rad)
     return peak_reduction
 
 '''

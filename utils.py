@@ -9,12 +9,12 @@ def get_hk(k): # normalizing factor for basis function
     _hk = _hk.at[onp.isnan(_hk)].set(1.)
     return onp.sqrt(onp.prod(_hk))
 
-def get_ck(trajectory, basis):
+def get_ck(trajectory, basis): # fourier coefficients for time-averaged trajectory
     ck = np.mean(vmap(basis.fk_vmap)(trajectory), axis=0)
     ck = ck / basis.hk_list
     return ck
 
-def get_phik(vals, basis):
+def get_phik(vals, basis): # fourier coefficients for information map
     _phi, _x = vals 
     phik = np.dot(_phi, vmap(basis.fk_vmap)(_x))
     phik = phik/phik[0]

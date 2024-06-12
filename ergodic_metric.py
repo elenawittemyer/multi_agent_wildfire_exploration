@@ -2,7 +2,7 @@ import jax.numpy as np
 
 
 class ErgodicMetric(object):
-
+    
     def __init__(self, basis) -> None:
         self.basis = basis
         self.lamk = (1.+np.linalg.norm(basis.k_list/np.pi,axis=1)**2)**(-(basis.n+1)/2.)
