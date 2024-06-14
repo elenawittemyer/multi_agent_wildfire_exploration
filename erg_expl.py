@@ -19,7 +19,7 @@ import time
     
 class ErgodicTrajectoryOpt(object):
     def __init__(self, initpos, pmap, num_agents) -> None:
-        time_horizon=40
+        time_horizon=50
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
         self.robot_model     = SingleIntegrator(num_agents)
@@ -52,7 +52,7 @@ class ErgodicTrajectoryOpt(object):
             e = np.squeeze(emap(x))
             ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
             return 100*self.erg_metric(ck, phik) \
-                    + 0.01 * np.mean(u**2) \
+                    + 1.0 * np.mean(u**2) \
                     + np.sum(barrier_cost(e))
 
         def eq_constr(z, args):

@@ -7,33 +7,36 @@ from gaussian import gaussian, gaussian_measurement
 import matplotlib.pyplot as plt
 import time
 
-#TODO: rethink how replanning is done so that trajectories don't just linger around information spots
 #TODO: figure out how to force steps to be of a certain size
 
-def main(t_f, f_m, t_u): # final time, measurement frequency, update time. update time should be at most half of time horizon (since init_pos=end_pos).
-    num_agents = 5
+def main(t_f, t_u, num_agents): # final time, measurement frequency, agents. update time should be at most half of time horizon (since init_pos=end_pos).
     init_pos = sample_initpos(num_agents)
     pmap = sample_map(100)
+    plot_prog = True
+    cmap = get_colormap(num_agents+1)
 
     path_travelled = np.empty(shape=(num_agents, 2) + (0, )).tolist()
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
 
-        traj_opt = ErgodicTrajectoryOpt(init_pos, pmap, num_agents)
+        traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), pmap, num_agents)
         for k in range(100):
             traj_opt.solver.solve(max_iter=1000)
             sol = traj_opt.solver.get_solution()
             clear_output(wait=True)
 
         new_initpos = []
-        visit_cells = [[], [], [], [], []]
         for i in range(num_agents):
             path_travelled[i][0].append(sol['x'][:,i][:,0][:t_u]+50.)
             path_travelled[i][1].append(sol['x'][:,i][:,1][:t_u]+50.)
-
-            pmap = update_map(np.array([sol['x'][:,i][:,0][0:t_u:f_m], sol['x'][:,i][:,1][0:t_u:f_m]]).T, pmap)
-                                        
+            pmap = update_map(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T, pmap)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
+            
+            if plot_prog == True:
+                fig, ax = plt.subplots()
+                ax.imshow(pmap, origin="lower")
+                ax.plot(np.array(path_travelled[i][0]).flatten(), np.array(path_travelled[i][1]).flatten(), c=cmap(i))
+                plt.show()
         
         init_pos = np.array(new_initpos)
 
@@ -95,14 +98,20 @@ def get_colormap(n, name='hsv'):
 ## Testing #####################
 ################################
 
-num_agents = 5
-path, map = main(200, 10, 20)
+agents = 2
+path, map = main(100, 20, agents)
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
 ax1.imshow(map, origin="lower")
-cmap = get_colormap(num_agents+1)
-for i in range(num_agents):
+cmap = get_colormap(agents+1)
+
+starts = []
+for i in range(agents):
     ax1.plot(np.array(path[i][0]).flatten(), np.array(path[i][1]).flatten(), c=cmap(i))
+    starts.append(plt.Circle(((np.array(path[i][0]).flatten()[0], np.array(path[i][1]).flatten()[0])), .3, color='w'))
+
+for i in range(agents):
+    ax1.add_patch(starts[i])
 
 ax2.imshow(sample_map(100), origin="lower")
 plt.show()
