@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from fluid_engine_dev.src.examples.python_examples.smoke_example01 import main
 
-smoke = np.load('smoke_density/smoke_array.npy')
-im = plt.imshow(smoke, vmin=0, vmax=1, cmap=plt.cm.gray,
-                    interpolation='nearest', origin='lower')
+main(log_data=True)
 
-plt.show()
