@@ -18,13 +18,13 @@ import matplotlib.pyplot as plt
 import time
     
 class ErgodicTrajectoryOpt(object):
-    def __init__(self, initpos, pmap, num_agents) -> None:
-        time_horizon=50
+    def __init__(self, initpos, pmap, num_agents, size) -> None:
+        time_horizon=40
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
         self.robot_model     = SingleIntegrator(num_agents)
         n,m,N = self.robot_model.n, self.robot_model.m, self.robot_model.N
-        self.target_distr    = TargetDistribution(pmap)
+        self.target_distr    = TargetDistribution(pmap, size)
         opt_args = {
             'x0' : initpos,
             'xf' : initpos,
@@ -38,7 +38,7 @@ class ErgodicTrajectoryOpt(object):
 
         def _emap(x):
             ''' Map state space to exploration space '''
-            return np.array([(x+50)/100])
+            return np.array([(x+(size/2))/size])
         emap = vmap(_emap, in_axes=0)
 
         def barrier_cost(e):
@@ -51,10 +51,9 @@ class ErgodicTrajectoryOpt(object):
             phik = args['phik']
             e = np.squeeze(emap(x))
             ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
-            return 100*self.erg_metric(ck, phik) \
-                    + 1.0 * np.mean(u**2) \
+            return 100 * self.erg_metric(ck, phik) \
+                    + .1 * np.mean(u**2) \
                     + np.sum(barrier_cost(e))
-
         def eq_constr(z, args):
             """ dynamic equality constriants """
             x, u = z[:, :, :n], z[:, :, n:]
@@ -69,7 +68,7 @@ class ErgodicTrajectoryOpt(object):
         def ineq_constr(z,args):
             """ control inequality constraints"""
             x, u = z[:, :, :n], z[:, :, n:]
-            _g=abs(u)-10 # TODO: does this term actually control step size
+            _g=abs(u)-10 
             return _g
 
         self.solver = AugmentedLagrangian(
