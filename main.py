@@ -7,11 +7,14 @@ from gaussian import gaussian, gaussian_measurement
 from smoke import vis_array, safety_map
 from fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import time
 import os
 
 #TODO: plot cumulative smoke density vs proportion of time in area to determine if algo is revisiting areas with poor visibility
-#REMINDER: weird squiggles in generated trajectory = control cost coefficient is too high
+#TODO: why do trajectories get squiggly for larger info maps?
+    #TODO: write a function that punishes steps smaller than a certain size?
+
 
 def main(t_f, t_u, peaks, num_agents, size): # final time, measurement frequency, agents. update time should be at most half of time horizon (since init_pos=end_pos).
     init_pos = sample_initpos(num_agents, size)
@@ -105,7 +108,7 @@ def sample_vis_coeff():
     return .5
 
 def noise_mask(map):
-    noise = onp.random.uniform(1E-5, 1E-3, map.shape)
+    noise = onp.random.uniform(1E-3, 1E-2, map.shape)
     noise = np.reshape(noise, map.shape)
     return map+noise
 
@@ -135,15 +138,38 @@ def final_plot(x, map_i, map_f, N, t_f):
 
     plt.show()
 
+def animate_plot(map_size, t_f, path):
+    path_x = np.array(path[0][0]).flatten()  ##TODO: CURRENTLY ONLY FOR 1 AGENT
+    path_y = np.array(path[0][1]).flatten()
+
+    fig, ax = plt.subplots()
+    den = np.load('smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_0.npy')
+    line = [[path_x[0], path_x[1]], [path_y[0], path_y[1]]]
+    img = ax.imshow(den, origin='lower', animated = True)
+    traj, = ax.plot(line[0], line[1], c='w')
+    
+    def updatefig(frame, img, traj, ax):
+        den = np.load('smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(frame) + '.npy')
+        line = [[path_x[frame], path_x[frame+1]], [path_y[frame], path_y[frame+1]]]
+        img.set_data(den)
+        traj, = ax.plot(line[0],line[1], c='w')
+        return img, traj
+
+    ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img, traj, ax), interval=1, blit=True)
+    mywriter = animation.FFMpegWriter(fps = 10)
+    ani.save("videos/smoke_one_agent.mp4", writer=mywriter)
+    plt.close(fig)
+
 ################################
 ## Testing #####################
 ################################
 
-agents = 3
+agents = 4
 t_f = 200
 t_u = 20
-size = 200
-peaks = 20
-path, init_map, fin_map = main(t_f, t_u, peaks, agents, size)
+size = 100
+peaks = 8
 
+path, init_map, fin_map = main(t_f, t_u, peaks, agents, size)
+animate_plot(size, t_f, path)
 final_plot(path, init_map, fin_map, agents, t_f)

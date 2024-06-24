@@ -51,9 +51,9 @@ class ErgodicTrajectoryOpt(object):
             phik = args['phik']
             e = np.squeeze(emap(x))
             ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
-            return 100 * self.erg_metric(ck, phik) \
+            return 1000 * N * self.erg_metric(ck, phik) \
                     + .1 * np.mean(u**2) \
-                    + np.sum(barrier_cost(e))
+                    + 10 * np.sum(barrier_cost(e))
         def eq_constr(z, args):
             """ dynamic equality constriants """
             x, u = z[:, :, :n], z[:, :, n:]
@@ -68,7 +68,8 @@ class ErgodicTrajectoryOpt(object):
         def ineq_constr(z,args):
             """ control inequality constraints"""
             x, u = z[:, :, :n], z[:, :, n:]
-            _g=abs(u)-10 
+            #_g = np.max(np.array([abs(u)-10, .5-abs(u)]))
+            _g =  abs(u)-10
             return _g
 
         self.solver = AugmentedLagrangian(

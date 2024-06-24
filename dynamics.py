@@ -20,3 +20,15 @@ class SingleIntegrator(object):
             return np.stack(x2)
         self._f = _f
         self.f = f
+
+def _f_test(x, u):
+    dt = 1
+    B = np.array([[1.,0.],
+                  [0.,1.]],)
+    return x + dt*B@u
+
+def f_test(x, u, N):
+    x2 = []
+    for i in range(N):
+        x2.append(_f_test(x[i,:], u[i,:]))
+    return np.stack(x2)

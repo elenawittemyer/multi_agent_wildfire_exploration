@@ -33,5 +33,3 @@ def safety_map(map, frame, size):
     for cell in danger_grid:
         map.at[cell[0], cell[1]].set(0)
     return map
-
-
