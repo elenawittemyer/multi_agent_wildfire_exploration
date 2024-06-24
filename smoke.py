@@ -11,8 +11,8 @@ def vis_array(frame, size, cells):
     den_array = []
     for cell in cells:
         den_array.append(smoke_grid[int(cell[0]), int(cell[1])])
-    den_array = np.array(den_array)
-    vis_array = np.maximum(1 - den_array, np.zeros(len(den_array)))
+    den_array = np.abs(np.array(den_array))
+    vis_array = np.maximum(1 - np.power(den_array, 1/5), np.zeros(len(den_array)))
     return vis_array
 
 def safety_cost(frame, size, x):

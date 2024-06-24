@@ -4,6 +4,7 @@ from jax import vmap
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
+from plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp
 from smoke import vis_array, safety_map
 from fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
@@ -16,9 +17,10 @@ import os
     #TODO: write a function that punishes steps smaller than a certain size?
 
 
-def main(t_f, t_u, peaks, num_agents, size): # final time, measurement frequency, agents. update time should be at most half of time horizon (since init_pos=end_pos).
+def main(t_f, t_u, peaks, num_agents, size, smoke_state=True):
     init_pos = sample_initpos(num_agents, size)
-    init_map = noise_mask(sample_map(size, peaks))
+    init_map = sample_map(size, peaks)
+    init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
@@ -49,7 +51,7 @@ def main(t_f, t_u, peaks, num_agents, size): # final time, measurement frequency
         for i in range(num_agents):
             path_travelled[i][0].append(sol['x'][:,i][:,0][:t_u]+(size/2))
             path_travelled[i][1].append(sol['x'][:,i][:,1][:t_u]+(size/2))
-            pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size)                        
+            pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, smoke_state)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
             
             if plot_prog == True:
@@ -72,14 +74,16 @@ def normalize_map(map):
     return map / np.sum(np.abs(map))
 
 def _measure_update(cell, size):
-    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .03))
+    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .05))
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
-def update_map(current_pos, current_map, iter, size):
-    #c = sample_vis_coeff()
-    #weighted_reductions = c*all_reductions
-    vis_coeffs = vis_array(iter, size, current_pos)
+def update_map(current_pos, current_map, iter, size, smoke_state):
+    if smoke_state == True:
+        vis_coeffs = vis_array(iter, size, current_pos)
+    else:
+        vis_coeffs = np.ones(len(current_pos))
+
     all_reductions = measure_update(current_pos, size)
     weighted_reductions = weight_mult(all_reductions, vis_coeffs)
     new_map = current_map + np.sum(weighted_reductions, axis=0)
@@ -95,14 +99,25 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 ################################
 
 def sample_map(size, num_peaks):
-    pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
-    pmap = gaussian(size, pos[0], pos[1], 10)
-    for i in range(1, num_peaks):
-        pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
-    return pmap 
+    fixed = False
+    if fixed==True:
+        pos = np.array([10, 10, 20, 63, 90, 90, 55, 42])
+        pmap = gaussian(size, pos[0], pos[1], 10)
+        for i in range(1, 4):
+            pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
+    else:
+        pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
+        pmap = gaussian(size, pos[0], pos[1], 10)
+        for i in range(1, num_peaks):
+            pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
+    return pmap
 
 def sample_initpos(num_agents, size):
-    return onp.random.uniform(-size/2, size/2, (num_agents, 2))
+    fixed = False
+    if fixed==True:
+        return np.zeros((num_agents, 2))
+    else:
+        return onp.random.uniform(-size/2, size/2, (num_agents, 2))
 
 def sample_vis_coeff():
     return .5
@@ -112,64 +127,20 @@ def noise_mask(map):
     noise = np.reshape(noise, map.shape)
     return map+noise
 
-
-################################
-## Plotting ####################
-################################
-     
-def get_colormap(n, name='hsv'):
-    return plt.cm.get_cmap(name, n)
-
-def final_plot(x, map_i, map_f, N, t_f):
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(map_f, origin="lower")
-    cmap = get_colormap(N+1)
-    map_size = map_i.shape[0]
-
-    starts = []
-    for i in range(N):
-        ax1.plot(np.array(x[i][0]).flatten(), np.array(x[i][1]).flatten(), c=cmap(i))
-        starts.append(plt.Circle(((np.array(x[i][0]).flatten()[0], np.array(x[i][1]).flatten()[0])), .3, color='w'))
-        ax1.add_patch(starts[i])
-    
-    ax2.imshow(map_i, origin="lower")
-    smoke_grid = np.load('smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(t_f) + '.npy')
-    ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-
-    plt.show()
-
-def animate_plot(map_size, t_f, path):
-    path_x = np.array(path[0][0]).flatten()  ##TODO: CURRENTLY ONLY FOR 1 AGENT
-    path_y = np.array(path[0][1]).flatten()
-
-    fig, ax = plt.subplots()
-    den = np.load('smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_0.npy')
-    line = [[path_x[0], path_x[1]], [path_y[0], path_y[1]]]
-    img = ax.imshow(den, origin='lower', animated = True)
-    traj, = ax.plot(line[0], line[1], c='w')
-    
-    def updatefig(frame, img, traj, ax):
-        den = np.load('smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(frame) + '.npy')
-        line = [[path_x[frame], path_x[frame+1]], [path_y[frame], path_y[frame+1]]]
-        img.set_data(den)
-        traj, = ax.plot(line[0],line[1], c='w')
-        return img, traj
-
-    ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img, traj, ax), interval=1, blit=True)
-    mywriter = animation.FFMpegWriter(fps = 10)
-    ani.save("videos/smoke_one_agent.mp4", writer=mywriter)
-    plt.close(fig)
-
 ################################
 ## Testing #####################
 ################################
 
-agents = 4
-t_f = 200
+agents = 3
+t_f = 100
 t_u = 20
 size = 100
 peaks = 8
 
 path, init_map, fin_map = main(t_f, t_u, peaks, agents, size)
-animate_plot(size, t_f, path)
+
+#path_ns, init_map, fin_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False)
+#time_dstrb_comp(size, t_f, init_map, path_ns, path_s, agents, fin_map_s, fin_map_ns)
+#animate_plot(size, t_f, path)
+
 final_plot(path, init_map, fin_map, agents, t_f)
