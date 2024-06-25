@@ -12,11 +12,12 @@ import jax.numpy as np
 #     avg_sq_grad = avg_sq_grad * gamma + jnp.square(g) * (1. - gamma)
 
 class AugmentedLagrangian(object):
-    def __init__(self, x0, loss, eq_constr, ineq_constr, args=None, step_size=1e-3, c=1.0):
+    def __init__(self, x0, loss, eq_constr, ineq_constr, file, args=None, step_size=1e-3, c=1.0):
         self.def_args = args
         self.loss = loss 
         self.eq_constr   = eq_constr
         self.ineq_constr = ineq_constr
+        self.f = file
         _eq_constr       = eq_constr(x0, args)
         _ineq_constr     = ineq_constr(x0, args)
         lam = np.zeros(_eq_constr.shape)
@@ -25,6 +26,7 @@ class AugmentedLagrangian(object):
         self.solution = {'x' : x0, 'lam' : lam, 'mu' : mu}
         self.avg_sq_grad = np.zeros_like(x0)
         self._prev_val = None
+        self.file_iter = 0
         # self._flat_solution, self._unravel = ravel_pytree(self.solution)
         def lagrangian(solution, args):
             # solution = self._unravel(flat_solution)
@@ -64,12 +66,14 @@ class AugmentedLagrangian(object):
         _eps = 1.0
         for k in range(max_iter):
             self.solution, _val, self.avg_sq_grad = self.step(self.solution, args, self.avg_sq_grad)
+            if self.file_iter%100==0:
+                    self.f.write(str(_val) + ' \n')
+            self.file_iter += 1
             if self._prev_val is None:
                 self._prev_val = _val
             else:
-                # print(_val)
                 _eps = np.abs(_val - self._prev_val)
                 self._prev_val = _val
             if _eps < eps:
-                print('done in ', k, ' iterations')
+                print('done in ', k, ' iterations') 
                 break

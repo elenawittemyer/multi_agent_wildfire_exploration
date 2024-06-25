@@ -4,7 +4,7 @@ from jax import vmap
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp
+from plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
 from smoke import vis_array, safety_map
 from fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
@@ -17,22 +17,28 @@ import os
     #TODO: write a function that punishes steps smaller than a certain size?
 
 
-def main(t_f, t_u, peaks, num_agents, size, smoke_state=True):
-    init_pos = sample_initpos(num_agents, size)
-    init_map = sample_map(size, peaks)
-    init_map = noise_mask(init_map)
+def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, init_pos=None):
+    if init_pos is None:
+        init_pos = sample_initpos(num_agents, size)
+    if init_map is None:
+        init_map = sample_map(size, peaks)
+        init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
     safety_aware = False
+    record_info_red = True
 
     if os.path.isdir('smoke_density/smoke_grid_' + str(size)) == False:
         print('Generating smoke data... ')
         os.mkdir('smoke_density/smoke_grid_' + str(size))
         gen_smoke(log_data=True, grid_size=size)
+    
 
     pmap = init_map
+    erg_file = open('plotting_data/erg_metric_data.txt', 'w+')
     path_travelled = np.empty(shape=(num_agents, 2) + (0, )).tolist()
+    map_sum = []
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
 
@@ -41,7 +47,7 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True):
         else:
             opt_map = pmap
         
-        traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size)
+        traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size, erg_file)
         for k in range(100):
             traj_opt.solver.solve(max_iter=1000)
             sol = traj_opt.solver.get_solution()
@@ -54,6 +60,9 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True):
             pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, smoke_state)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
             
+            if record_info_red == True:
+                map_sum.append(np.sum(pmap))
+            
             if plot_prog == True:
                 smoke_grid = np.load('smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
                 fig, ax = plt.subplots()
@@ -63,7 +72,15 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True):
                 plt.show()
         
         init_pos = np.array(new_initpos)
-
+    
+    erg_file.close()
+    
+    if record_info_red == True:
+        map_file = open('plotting_data/info_map_data.txt', 'w+')
+        for val in map_sum:
+            map_file.write(str(val) + ' \n')
+        map_file.close()
+        
     return path_travelled, init_map, pmap
     
 ################################
@@ -74,7 +91,7 @@ def normalize_map(map):
     return map / np.sum(np.abs(map))
 
 def _measure_update(cell, size):
-    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .05))
+    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .04))
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
@@ -99,25 +116,14 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 ################################
 
 def sample_map(size, num_peaks):
-    fixed = False
-    if fixed==True:
-        pos = np.array([10, 10, 20, 63, 90, 90, 55, 42])
-        pmap = gaussian(size, pos[0], pos[1], 10)
-        for i in range(1, 4):
-            pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
-    else:
-        pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
-        pmap = gaussian(size, pos[0], pos[1], 10)
-        for i in range(1, num_peaks):
-            pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
+    pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
+    pmap = gaussian(size, pos[0], pos[1], 10)
+    for i in range(1, num_peaks):
+        pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
     return pmap
 
 def sample_initpos(num_agents, size):
-    fixed = False
-    if fixed==True:
-        return np.zeros((num_agents, 2))
-    else:
-        return onp.random.uniform(-size/2, size/2, (num_agents, 2))
+    return onp.random.uniform(-size/2, size/2, (num_agents, 2))
 
 def sample_vis_coeff():
     return .5
@@ -131,16 +137,18 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 3
+agents = 5
 t_f = 100
 t_u = 20
 size = 100
 peaks = 8
+#comp_map = sample_map(size, peaks)
+#comp_pos = sample_initpos(agents, size)
 
-path, init_map, fin_map = main(t_f, t_u, peaks, agents, size)
-
-#path_ns, init_map, fin_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False)
-#time_dstrb_comp(size, t_f, init_map, path_ns, path_s, agents, fin_map_s, fin_map_ns)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size)
+#path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
+#time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path)
-
-final_plot(path, init_map, fin_map, agents, t_f)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f)

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import time
     
 class ErgodicTrajectoryOpt(object):
-    def __init__(self, initpos, pmap, num_agents, size) -> None:
+    def __init__(self, initpos, pmap, num_agents, size, f) -> None:
         time_horizon=40
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
@@ -35,7 +35,6 @@ class ErgodicTrajectoryOpt(object):
         x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
         u = np.zeros((time_horizon, N, m))
         self.init_sol = np.concatenate([x, u], axis=2) 
-
         def _emap(x):
             ''' Map state space to exploration space '''
             return np.array([(x+(size/2))/size])
@@ -51,7 +50,8 @@ class ErgodicTrajectoryOpt(object):
             phik = args['phik']
             e = np.squeeze(emap(x))
             ck = np.mean(vmap(get_ck, in_axes=(1, None))(e, self.basis), axis=0)
-            return 100 * N * self.erg_metric(ck, phik) \
+            erg_m = self.erg_metric(ck, phik)
+            return 100 * N * erg_m \
                     + .1 * np.mean(u**2) \
                     + 100 * np.sum(barrier_cost(e))
         def eq_constr(z, args):
@@ -76,7 +76,8 @@ class ErgodicTrajectoryOpt(object):
                                             self.init_sol,
                                             loss, 
                                             eq_constr, 
-                                            ineq_constr, 
+                                            ineq_constr,
+                                            f, 
                                             opt_args, 
                                             step_size=0.01,
                                             c=1.0

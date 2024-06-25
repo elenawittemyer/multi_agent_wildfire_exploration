@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import os
 
 def get_colormap(n, name='hsv'):
     return plt.cm.get_cmap(name, n)
@@ -112,3 +113,20 @@ def time_dstrb_comp(map_size, t_f, init_map, path_ns, path_s, num_agents, f_map_
     
     plt.show()
     
+def plot_ergodic_metric():
+    with open('plotting_data/erg_metric_data.txt', 'r') as file:
+        erg_vals = np.array(file.read().splitlines()).astype(float)
+    time = range(len(erg_vals))
+    plt.plot(time, erg_vals)
+    plt.xlabel('Iterations')
+    plt.ylabel('Ergodic Metric')
+    plt.show()
+
+def plot_info_reduct(t_f):
+    with open('plotting_data/info_map_data.txt', 'r') as file:
+        info_sum = np.array(file.read().splitlines()).astype(float)
+    time = np.arange(0, t_f, t_f/len(info_sum))
+    plt.plot(time, info_sum)
+    plt.xlabel('Time')
+    plt.ylabel('Total Map Uncertainty')
+    plt.show()
