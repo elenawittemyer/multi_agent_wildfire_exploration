@@ -16,10 +16,6 @@ class TargetDistribution(object):
 
     def p(self, map):
         return map
-        # return np.exp(-60.5 * np.sum((x[:2] - 0.2)**2)) \
-        #             + np.exp(-60.5 * np.sum((x[:2] - 0.75)**2)) \
-        #             + np.exp(-60.5 * np.sum((x[:2] - np.array([0.2, 0.75]))**2)) \
-        #             + np.exp(-60.5 * np.sum((x[:2] - np.array([0.75, 0.2]))**2))
 
     def update(self):
         pass

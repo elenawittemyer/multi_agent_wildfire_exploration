@@ -53,7 +53,7 @@ class ErgodicTrajectoryOpt(object):
             erg_m = self.erg_metric(ck, phik)
             return 100 * N * erg_m \
                     + .1 * np.mean(u**2) \
-                    + 100 * np.sum(barrier_cost(e))
+                    + 10 * np.sum(barrier_cost(e))
         def eq_constr(z, args):
             """ dynamic equality constriants """
             x, u = z[:, :, :n], z[:, :, n:]
@@ -83,22 +83,3 @@ class ErgodicTrajectoryOpt(object):
                                             c=1.0
                     )
         # self.solver.solve()
-
-'''
-x = np.linspace(np.array([[10., 37.], [-15., 1.], [20. , -18.], [8, -17], [38, 23]]),
-                np.zeros((5,2)), 100, endpoint=True)
-
-def _emap(x):
-    return np.array([(x+50)/100])
-emap = vmap(_emap, in_axes=0)
-
-@vmap 
-def emap_des(x):
-    return np.array([(x[0]+50)/100, (x[1]+50)/100, (x[2]+50)/100, (x[3]+50)/100, (x[4]+50)/100])
-
-N=5
-a = emap_des(x)
-b = emap(x)[:,0]
-b = np.squeeze(b)
-print(0)
-'''

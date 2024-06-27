@@ -4,18 +4,13 @@ from jax import vmap
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
-from smoke import vis_array, safety_map
-from fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
+from data_and_plotting.plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
+from data_and_plotting.smoke import vis_array, safety_map
+from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
 import os
-
-#TODO: plot cumulative smoke density vs proportion of time in area to determine if algo is revisiting areas with poor visibility
-#TODO: why do trajectories get squiggly for larger info maps?
-    #TODO: write a function that punishes steps smaller than a certain size?
-
 
 def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, init_pos=None):
     if init_pos is None:
@@ -27,18 +22,18 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
 
     plot_prog = False
     safety_aware = False
-    record_info_red = True
+    record_info_red = False
 
-    if os.path.isdir('smoke_density/smoke_grid_' + str(size)) == False:
+    if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
         print('Generating smoke data... ')
-        os.mkdir('smoke_density/smoke_grid_' + str(size))
+        os.mkdir('data_and_plotting/smoke_density/smoke_grid_' + str(size))
         gen_smoke(log_data=True, grid_size=size)
     
-
     pmap = init_map
-    erg_file = open('plotting_data/erg_metric_data.txt', 'w+')
+    erg_file = open('data_and_plotting/plotting_data/erg_metric_data.txt', 'w+')
     path_travelled = np.empty(shape=(num_agents, 2) + (0, )).tolist()
     map_sum = []
+
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
 
@@ -64,7 +59,7 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
                 map_sum.append(np.sum(pmap))
             
             if plot_prog == True:
-                smoke_grid = np.load('smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
+                smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
                 fig, ax = plt.subplots()
                 ax.imshow(pmap, origin="lower")
                 ax.plot(np.array(path_travelled[i][0]).flatten(), np.array(path_travelled[i][1]).flatten(), c=cmap(i))
@@ -74,9 +69,9 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
         init_pos = np.array(new_initpos)
     
     erg_file.close()
-    
+
     if record_info_red == True:
-        map_file = open('plotting_data/info_map_data.txt', 'w+')
+        map_file = open('data_and_plotting/plotting_data/info_map_data.txt', 'w+')
         for val in map_sum:
             map_file.write(str(val) + ' \n')
         map_file.close()
@@ -141,14 +136,14 @@ agents = 5
 t_f = 100
 t_u = 20
 size = 100
-peaks = 8
+peaks = 6
 #comp_map = sample_map(size, peaks)
 #comp_pos = sample_initpos(agents, size)
 
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
-#animate_plot(size, t_f, path)
+#animate_plot(size, t_f, path, agents, i_map)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
