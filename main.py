@@ -7,6 +7,7 @@ from gaussian import gaussian, gaussian_measurement
 from data_and_plotting.plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
 from data_and_plotting.smoke import vis_array, safety_map
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
+from target_distribution import pdf, shannon_entropy, calc_entropy
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
@@ -21,7 +22,7 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
-    safety_aware = False
+    shannon_info = True
     record_info_red = False
 
     if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
@@ -37,8 +38,8 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
 
-        if safety_aware == True:
-            opt_map = safety_map(pmap, step, size)
+        if shannon_info == True:
+            opt_map = calc_entropy(pmap, size, step)
         else:
             opt_map = pmap
         
@@ -95,7 +96,7 @@ def update_map(current_pos, current_map, iter, size, smoke_state):
         vis_coeffs = vis_array(iter, size, current_pos)
     else:
         vis_coeffs = np.ones(len(current_pos))
-
+    
     all_reductions = measure_update(current_pos, size)
     weighted_reductions = weight_mult(all_reductions, vis_coeffs)
     new_map = current_map + np.sum(weighted_reductions, axis=0)
@@ -132,16 +133,18 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 5
+agents = 2
 t_f = 100
 t_u = 20
 size = 100
 peaks = 6
+
 #comp_map = sample_map(size, peaks)
 #comp_pos = sample_initpos(agents, size)
 
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
+
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 final_plot(path, i_map, f_map, agents, t_f)

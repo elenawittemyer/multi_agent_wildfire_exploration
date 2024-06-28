@@ -3,6 +3,8 @@
 import jax.numpy as np
 import random
 import matplotlib.pyplot as plt
+from functools import partial
+from jax import jit
  
 def gaussian_filter(kernel_size, sigma=0.3, muu=0):
  
@@ -53,7 +55,13 @@ def gaussian(size, x0, y0, radius):
     gaussian = np.zeros((size, size))
 
     gaussian += np.exp(-4*np.log(2) * ((x-x0)**2 + (y-y0)**2) / radius**2)
+    
+    return gaussian
 
+def gaussian_1d(spread, x0, radius):
+    x = np.arange(0, spread, 1, float)
+    gaussian = np.zeros(spread)
+    gaussian += np.exp(-4*np.log(2)*(x-x0)**2 / radius**2)
     return gaussian
  
 def gaussian_measurement(size, x0, y0, spread):
