@@ -8,13 +8,22 @@ import time
 ## Collect new data: gen_smoke(log_data=True, grid_size=100)
 
 def vis_array(frame, size, cells):
+    den_cutoff = .25
+
     path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     smoke_grid = np.load(path + '/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
     den_array = []
     for cell in cells:
         den_array.append(smoke_grid[int(cell[0]), int(cell[1])])
-    den_array = np.abs(np.array(den_array))
-    vis_array = np.maximum(1 - den_array, np.zeros(len(den_array)))
+    den_array = np.array(den_array)
+
+    vis_array = []
+    for val in den_array:
+        if val<den_cutoff:
+            vis_array.append(1-np.abs(val))
+        else:
+            vis_array.append(0)
+    vis_array = np.array(vis_array)
     return vis_array
 
 def safety_cost(frame, size, x):

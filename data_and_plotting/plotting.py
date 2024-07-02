@@ -130,7 +130,29 @@ def plot_ergodic_metric():
     with open(path + '/plotting_data/erg_metric_data.txt', 'r') as file:
         erg_vals = np.array(file.read().splitlines()).astype(float)
     time = range(len(erg_vals))
+
+    erg_diff = np.diff(erg_vals)
+    peaks = np.where(erg_diff>.1)[0].tolist()
+    peaks.insert(0, 0)
+    peaks.append(len(erg_diff))
+
+    plateaus = []
+    avg_erg = []
+    for i in range(len(peaks)-1):
+        plateau_region = np.where(np.abs(erg_diff)<.03)[0]
+        plateau_region = plateau_region[np.logical_and(peaks[i]<plateau_region, plateau_region<peaks[i+1])]
+        avg_erg.append(np.average(erg_vals[plateau_region]))
+        plateaus.append(plateau_region[0])
+    plateaus = np.array(plateaus)
+    avg_erg = np.array(avg_erg)
+
+    min_time = plateaus-peaks[0:len(plateaus)]
+    avg_min_time = np.sum(min_time)/len(min_time)
+    print("Avg erg metric minimization time: " + str(avg_min_time))
+    print("Avg final erg metric: " + str(np.average(avg_erg)))
+
     plt.plot(time, erg_vals)
+    plt.vlines(plateaus, 0, np.max(erg_vals), colors='r', linestyles='dashed')
     plt.xlabel('Iterations')
     plt.ylabel('Ergodic Metric')
     plt.show()
@@ -140,6 +162,7 @@ def plot_info_reduct(t_f):
     with open(path + '/plotting_data/info_map_data.txt', 'r') as file:
         info_sum = np.array(file.read().splitlines()).astype(float)
     time = np.arange(0, t_f, t_f/len(info_sum))
+    print("Info reduction: " + str((1-info_sum[-1]/info_sum[0])*100) + str('%'))
     plt.plot(time, info_sum)
     plt.xlabel('Time')
     plt.ylabel('Total Map Uncertainty')

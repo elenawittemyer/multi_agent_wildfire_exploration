@@ -7,13 +7,15 @@ from gaussian import gaussian, gaussian_measurement
 from data_and_plotting.plotting import get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
 from data_and_plotting.smoke import vis_array, safety_map
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
-from target_distribution import pdf, shannon_entropy, calc_entropy
+from target_distribution import calc_entropy
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
 import os
 
-def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, init_pos=None):
+#TODO: create opt_map that subtracts smoke density from info map
+
+def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, init_pos=None, entropy=True):
     if init_pos is None:
         init_pos = sample_initpos(num_agents, size)
     if init_map is None:
@@ -22,8 +24,7 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
-    shannon_info = True
-    record_info_red = False
+    record_info_red = True
 
     if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
         print('Generating smoke data... ')
@@ -38,7 +39,7 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
 
-        if shannon_info == True:
+        if entropy == True:
             opt_map = calc_entropy(pmap, size, step)
         else:
             opt_map = pmap
@@ -51,13 +52,13 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
 
         new_initpos = []
         for i in range(num_agents):
+            if record_info_red == True:
+                map_sum.append(np.sum(pmap))
+
             path_travelled[i][0].append(sol['x'][:,i][:,0][:t_u]+(size/2))
             path_travelled[i][1].append(sol['x'][:,i][:,1][:t_u]+(size/2))
             pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, smoke_state)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
-            
-            if record_info_red == True:
-                map_sum.append(np.sum(pmap))
             
             if plot_prog == True:
                 smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
@@ -76,8 +77,11 @@ def main(t_f, t_u, peaks, num_agents, size, smoke_state=True, init_map=None, ini
         for val in map_sum:
             map_file.write(str(val) + ' \n')
         map_file.close()
-        
-    return path_travelled, init_map, pmap
+
+    if entropy == True:
+        return path_travelled, init_map, pmap, opt_map
+    else:
+        return path_travelled, init_map, pmap
     
 ################################
 ## Mapping Helpers #############
@@ -87,7 +91,7 @@ def normalize_map(map):
     return map / np.sum(np.abs(map))
 
 def _measure_update(cell, size):
-    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .04))
+    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .03))
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
@@ -139,14 +143,21 @@ t_u = 20
 size = 100
 peaks = 6
 
-#comp_map = sample_map(size, peaks)
-#comp_pos = sample_initpos(agents, size)
+comp_map = sample_map(size, peaks)
+comp_pos = sample_initpos(agents, size)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size)
+
+path, i_map, f_map, opt_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, init_pos = comp_pos)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, init_pos = comp_pos, entropy = False)
+
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
