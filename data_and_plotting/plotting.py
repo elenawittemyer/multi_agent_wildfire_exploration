@@ -31,7 +31,7 @@ def animate_plot(map_size, t_f, path, num_agents, map_i):
     path_x = []
     path_y = []
     for i in range(num_agents):
-        path_x.append(np.array(path[i][0]).flatten())  ##TODO: CURRENTLY ONLY FOR 1 AGENT
+        path_x.append(np.array(path[i][0]).flatten()) 
         path_y.append(np.array(path[i][1]).flatten())
 
     fig, ax = plt.subplots()
@@ -53,8 +53,45 @@ def animate_plot(map_size, t_f, path, num_agents, map_i):
 
     ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img, traj, ax), interval=1, blit=True)
     mywriter = animation.FFMpegWriter(fps = 10)
-    ani.save("videos/smoke_multi_agent.mp4", writer=mywriter)
+    ani.save(path + "/videos/smoke_multi_agent.mp4", writer=mywriter)
     plt.close(fig)
+
+def animate_vis(map_size, t_f, map_i, peak_idx):
+
+    def blackout_map(map, peak_indices, size, frame):
+        local_map = np.copy(map)
+        den_cutoff = .45
+        den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
+        den_avg = []
+        for i in range(len(peak_indices)):
+            den_avg.append(np.average(den[peak_indices[i]]))
+        den_avg = np.array(den_avg)
+
+        blackout_array = den_avg<den_cutoff 
+        blackout_array = blackout_array * 1
+        for i in range(len(peak_indices)):
+            local_map[peak_indices[i]] *= blackout_array[i]
+        return local_map
+    
+    fig, ax = plt.subplots()
+    path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    den = np.load(path + '/smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_0.npy')
+    b_map = blackout_map(map_i, peak_idx, map_size, 0)
+    img1 = ax.imshow(b_map, origin="lower")
+    img2 = ax.imshow(den, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower', animated = True)
+
+    def updatefig(frame, img1, img2):
+        den = np.load(path + '/smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(frame) + '.npy')
+        b_map = blackout_map(map_i, peak_idx, map_size, frame)
+        img1.set_data(b_map)
+        img2.set_data(den)
+        return img1, img2
+    
+    ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img1, img2), interval=1, blit=True)
+    mywriter = animation.FFMpegWriter(fps = 10)
+    ani.save(path + "/videos/smoke_info_visibility.mp4", writer=mywriter)
+    plt.close(fig)
+
 
 def smoke_vs_info(map_size, t_f, path, init_map, num_agents):
     time_map = np.zeros((map_size, map_size))

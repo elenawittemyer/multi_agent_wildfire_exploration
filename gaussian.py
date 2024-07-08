@@ -5,7 +5,7 @@ import random
 import matplotlib.pyplot as plt
 from functools import partial
 from jax import jit
- 
+
 def gaussian_filter(kernel_size, sigma=0.3, muu=0):
  
     # Initializing value of x,y as grid of kernel size
