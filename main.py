@@ -146,11 +146,11 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 2
-t_f = 100
+agents = 4
+t_f = 180
 t_u = 20
-size = 100
-peaks = 6
+size = 150
+peaks = 10
 
 comp_map, comp_peaks = sample_map(size, peaks)
 comp_pos = sample_initpos(agents, size)
@@ -159,14 +159,15 @@ path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, pe
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
-#animate_vis(size, t_f, i_map, path, agents, comp_peaks)
+animate_plot(size, t_f, path, agents, i_map)
+animate_vis(size, t_f, i_map, path, agents, comp_peaks)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
 
-
-
+'''
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
+'''

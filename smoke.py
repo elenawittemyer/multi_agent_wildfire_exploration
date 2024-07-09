@@ -190,11 +190,13 @@ def blackout_map(info_map, peak_indices, size, frame):
     return np.copy(map)
 
 '''
-size = 100
+size = 150
 total_smoke = []
-for i in range(100):
+for i in range(150):
     den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(i) + '.npy')
     total_smoke.append(np.sum(den))
+plt.plot(range(len(total_smoke)), total_smoke)
+plt.show()
 
 #WARNING: ONLY USE ONCE
 def modify_smoke(size):
@@ -202,7 +204,7 @@ def modify_smoke(size):
     file_count = len(files)
     for i in range(file_count):
         init_den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(i) + '.npy')
-        mod_den = init_den*(1+i/450)        
+        mod_den = init_den*(1+i/400)        
         with open('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(i) + '.npy', 'wb') as f:
             np.save(f, mod_den)
     return 0
