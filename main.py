@@ -12,8 +12,6 @@ import matplotlib.animation as animation
 import time
 import os
 
-#TODO: create opt_map that subtracts smoke density from info map
-
 def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init_pos=None, entropy=False, mask_map = False, blackout = False):
     
     if init_pos is None:
@@ -161,6 +159,7 @@ path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, pe
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
+#animate_vis(size, t_f, i_map, path, agents, comp_peaks)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
