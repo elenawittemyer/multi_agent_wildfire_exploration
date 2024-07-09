@@ -10,9 +10,9 @@ import time
 ## Collect new data: gen_smoke(log_data=True, grid_size=100)
 
 def vis_array(frame, size, cells):
-    den_cutoff = .45
+    den_cutoff = .3
     smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
-    smoke_grid = np.abs(smoke_grid / np.max(smoke_grid))
+    #smoke_grid = np.abs(smoke_grid / np.max(smoke_grid))
     
     den_array = []
     for cell in cells:
@@ -29,6 +29,41 @@ def vis_array(frame, size, cells):
 
     return vis_array
 
+def vis_array_b(frame, size, cells, peak_indices):
+    den_cutoff = .3
+
+    peaks = np.empty((0, 2))
+    change_idx = []
+    change_sum = 0
+    for peak in peak_indices: 
+        peak = np.flip(np.array(peak))
+        peaks = np.vstack((peaks, peak.T))
+        change_sum += len(peak.T)
+        change_idx.append(change_sum)
+    change_idx = np.array(change_idx)
+
+    den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
+    den_avg = []
+    for i in range(len(peak_indices)):
+        den_avg.append(np.average(den[peak_indices[i]]))
+    den_avg = np.array(den_avg)
+
+    den_array = []
+    for cell in cells:
+        den_array.append(den[int(cell[0]), int(cell[1])])
+    den_array = np.array(den_array)
+
+    vis_array = []
+    for i in range(len(cells)):
+        if cells[i].tolist() in peaks.tolist():
+            j = np.where(np.equal(peaks, cells[i]).all(1))[0][0]
+            k = np.where(j<change_idx)[0][0]
+            vis_array.append(max((den_cutoff-den_avg[k])/den_cutoff, 0))
+        else:
+            vis_array.append(max((den_cutoff-den_array[i])/den_cutoff, 0))
+    
+    return np.array(vis_array)
+
 def safety_cost(frame, size, x):
     cells = np.floor(x)
     smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
@@ -44,7 +79,7 @@ def pdf(V, x, args):
     frame = args['frame']
     size = args['size']
     avoid_smoke = False
-    den_cutoff = .25
+    den_cutoff = .3
 
     # load smoke density grid and calculate visibility at measurement location
     den = np.abs(np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy'))
@@ -117,7 +152,7 @@ def calc_entropy(map, size, frame):
     return info_grid
 
 def calc_mask_map(map, size, frame):
-    den_cutoff = .25
+    den_cutoff = .3
     
     den = np.abs(np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy'))
     den_norm = den/np.max(den)
@@ -137,7 +172,7 @@ def calc_mask_map(map, size, frame):
 
 
 def blackout_map(info_map, peak_indices, size, frame):
-    den_cutoff = .45
+    den_cutoff = .3
     map = onp.copy(info_map)
 
     den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
@@ -154,13 +189,13 @@ def blackout_map(info_map, peak_indices, size, frame):
     
     return np.copy(map)
 
+'''
 size = 100
 total_smoke = []
 for i in range(100):
     den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(i) + '.npy')
     total_smoke.append(np.sum(den))
 
-'''
 #WARNING: ONLY USE ONCE
 def modify_smoke(size):
     _, _, files = next(os.walk("data_and_plotting/smoke_density/smoke_grid_" + str(size)))

@@ -5,7 +5,7 @@ from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
 from data_and_plotting.plotting import animate_vis, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
-from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map
+from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map, vis_array_b
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -14,8 +14,7 @@ import os
 
 #TODO: create opt_map that subtracts smoke density from info map
 
-def main(t_f, t_u, peaks, num_agents, size, 
-         smoke_state=True, init_map=None, peak_pos = None, init_pos=None, entropy=False, mask_map = False, blackout = False):
+def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init_pos=None, entropy=False, mask_map = False, blackout = False):
     
     if init_pos is None:
         init_pos = sample_initpos(num_agents, size)
@@ -62,7 +61,7 @@ def main(t_f, t_u, peaks, num_agents, size,
 
             path_travelled[i][0].append(sol['x'][:,i][:,0][:t_u]+(size/2))
             path_travelled[i][1].append(sol['x'][:,i][:,1][:t_u]+(size/2))
-            pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, smoke_state)                        
+            pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, peak_pos)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
             
             if plot_prog == True:
@@ -98,9 +97,15 @@ def _measure_update(cell, size):
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
-def update_map(current_pos, current_map, iter, size, smoke_state):
-    if smoke_state == True:
-        vis_coeffs = vis_array(iter, size, current_pos)
+def update_map(current_pos, current_map, iter, size, peak_idx):
+    blackout_info = True
+    smoke_on = True
+
+    if smoke_on== True:
+        if blackout_info == True:
+            vis_coeffs = vis_array_b(iter, size, current_pos, peak_idx)
+        else:
+            vis_coeffs = vis_array(iter, size, current_pos)
     else:
         vis_coeffs = np.ones(len(current_pos))
     
@@ -156,16 +161,13 @@ path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, pe
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
-animate_plot(size, t_f, path, agents, i_map)
-animate_vis(size, t_f, i_map, comp_peaks)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
 
-'''
+
+
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos)
-
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
-'''
