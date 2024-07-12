@@ -67,12 +67,13 @@ def animate_vis(map_size, t_f, map_i, pos, num_agents, peak_idx):
             den_avg.append(np.average(den[peak_indices[i]]))
         den_avg = np.array(den_avg)
 
+        
         blackout_array = den_avg<den_cutoff 
         blackout_array = blackout_array * 1
         for i in range(len(peak_indices)):
             local_map[peak_indices[i]] *= blackout_array[i]
         return local_map
-    
+
     cmap = get_colormap(num_agents+1)
     
     pos_x = []
@@ -216,4 +217,18 @@ def plot_info_reduct(t_f):
     plt.plot(time, info_sum)
     plt.xlabel('Time')
     plt.ylabel('Total Map Uncertainty')
+    plt.show()
+
+def basic_path_plot(x, map_i, N):
+    fig, ax1 = plt.subplots()
+    ax1.imshow(map_i, origin="lower")
+    cmap = get_colormap(N+1)
+    map_size = map_i.shape[0]
+
+    starts = []
+    for i in range(N):
+        ax1.plot(np.array(x[i][0]).flatten(), np.array(x[i][1]).flatten(), c=cmap(i))
+        starts.append(plt.Circle(((np.array(x[i][0]).flatten()[0], np.array(x[i][1]).flatten()[0])), .3, color='w'))
+        ax1.add_patch(starts[i])
+    
     plt.show()

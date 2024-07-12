@@ -12,7 +12,6 @@ import time
 def vis_array(frame, size, cells):
     den_cutoff = .3
     smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
-    #smoke_grid = np.abs(smoke_grid / np.max(smoke_grid))
     
     den_array = []
     for cell in cells:
@@ -78,7 +77,7 @@ def safety_cost(frame, size, x):
 def pdf(V, x, args):
     frame = args['frame']
     size = args['size']
-    avoid_smoke = False
+    avoid_smoke = True
     den_cutoff = .3
 
     # load smoke density grid and calculate visibility at measurement location
@@ -94,7 +93,7 @@ def pdf(V, x, args):
     
     # create gaussian peak centered at visibility coefficient
     v_true = V[int(len(V)/2)]
-    spread =100/v_true
+    spread = 100/v_true
     rad = spread/2 # smoke vs peak effect seems balanced?
     pdf_V = []
     gauss_peak = gaussian_1d(200, C*100, rad)

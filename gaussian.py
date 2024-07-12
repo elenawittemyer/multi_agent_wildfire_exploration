@@ -70,16 +70,6 @@ def gaussian_measurement(size, x0, y0, spread):
     return peak_reduction
 
 '''
-size = 500
-rand_gaussian2 = gaussian(size, 200, 180, 130)
-meas_reduction = gaussian_measurement(size, 200, 180, .5)
-map = rand_gaussian2 + meas_reduction
-fig = plt.figure()
-plt.imshow(map.T, origin="lower")
-plt.show()
-'''
-
-'''
 kernel_size=200
 gaussian = gaussian_filter(kernel_size)
 big_gaussian1 = np.hstack((np.zeros((200,200)), np.zeros((200,200))))

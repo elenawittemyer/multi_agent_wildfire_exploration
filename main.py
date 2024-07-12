@@ -4,7 +4,7 @@ from jax import vmap
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from data_and_plotting.plotting import animate_vis, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
+from data_and_plotting.plotting import animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
 from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map, vis_array_b
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
@@ -45,7 +45,7 @@ def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init
             opt_map = blackout_map(pmap, peak_pos, size, step)
         else:
             opt_map = pmap
-        
+
         traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size, erg_file)
         for k in range(100):
             traj_opt.solver.solve(max_iter=1000)
@@ -62,14 +62,15 @@ def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init
             pmap = update_map(np.floor(np.array([sol['x'][:,i][:,0][:t_u], sol['x'][:,i][:,1][:t_u]]).T)+(size/2), pmap, step, size, peak_pos)                        
             new_initpos.append([sol['x'][:,i][:,0][t_u-1], sol['x'][:,i][:,1][t_u-1]])
             
-            if plot_prog == True:
-                smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
-                fig, (ax1, ax2) = plt.subplots(1, 2)
-                ax1.imshow(pmap, origin="lower")
+        if plot_prog == True:
+            smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(step) + '.npy')
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            ax1.imshow(pmap, origin="lower")
+            for i in range(num_agents):
                 ax1.plot(np.array(path_travelled[i][0]).flatten(), np.array(path_travelled[i][1]).flatten(), c=cmap(i))
-                ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
-                ax2.imshow(opt_map, origin='lower')
-                plt.show()
+            ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+            ax2.imshow(opt_map, origin='lower')
+            plt.show()
         
         init_pos = np.array(new_initpos)
     
@@ -135,7 +136,7 @@ def sample_initpos(num_agents, size):
     return onp.random.uniform(-size/2, size/2, (num_agents, 2))
 
 def sample_vis_coeff():
-    return .5
+    return .2
 
 def noise_mask(map):
     noise = onp.random.uniform(1E-3, 1E-2, map.shape)
@@ -147,15 +148,15 @@ def noise_mask(map):
 ################################
 
 agents = 4
-t_f = 180
+t_f = 100
 t_u = 20
-size = 150
-peaks = 10
+size = 100
+peaks = 6
 
 comp_map, comp_peaks = sample_map(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, blackout = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
