@@ -128,7 +128,7 @@ def sample_map(size, num_peaks):
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
         new_peak = gaussian(size, pos[2*i], pos[2*i+1], 10)
-        pmap += gaussian(size, pos[2*i], pos[2*i+1], 10)
+        pmap += new_peak
         peak_indices.append(np.where(new_peak>.1))
     return pmap, peak_indices
 
@@ -155,7 +155,6 @@ peaks = 5
 
 comp_map, comp_peaks = sample_map(size, peaks)
 comp_pos = sample_initpos(agents, size)
-
 
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)

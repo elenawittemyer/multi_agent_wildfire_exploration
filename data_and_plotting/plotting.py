@@ -232,3 +232,35 @@ def basic_path_plot(x, map_i, N):
         ax1.add_patch(starts[i])
     
     plt.show()
+
+
+'''
+plt.imshow(comp_map, origin='lower')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.xticks(x_ticks)
+plt.yticks(y_ticks)
+plt.title('Uncertainty Distribution')
+plt.colorbar()
+plt.show()
+
+smoke = np.load('data_and_plotting/smoke_density/sample_smoke.npy')
+plt.imshow(smoke,vmin=0, vmax=1, cmap=plt.cm.gray,interpolation='nearest', origin='lower')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.xticks(x_ticks)
+plt.yticks(y_ticks)
+plt.title("Smoke Density Distribution")
+plt.colorbar()
+plt.show()
+
+eid = calc_mask_map(comp_map, 200, 0)*1.0005
+plt.imshow(eid, origin='lower')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.xticks(x_ticks)
+plt.yticks(y_ticks)
+plt.title("Expected Information Distribution")
+plt.colorbar()
+plt.show()
+'''
