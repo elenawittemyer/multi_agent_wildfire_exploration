@@ -124,10 +124,10 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 
 def sample_map(size, num_peaks):
     pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
-    pmap = gaussian(size, pos[0], pos[1], 10)
+    pmap = gaussian(size, pos[0], pos[1], 20)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
-        new_peak = gaussian(size, pos[2*i], pos[2*i+1], 10)
+        new_peak = gaussian(size, pos[2*i], pos[2*i+1], 20)
         pmap += new_peak
         peak_indices.append(np.where(new_peak>.1))
     return pmap, peak_indices
