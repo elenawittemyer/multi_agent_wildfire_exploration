@@ -60,7 +60,7 @@ def animate_vis(map_size, t_f, map_i, pos, num_agents, peak_idx):
 
     def blackout_map(map, peak_indices, size, frame):
         local_map = np.copy(map)
-        den_cutoff = .3
+        den_cutoff = .35
         den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
         den_avg = []
         for i in range(len(peak_indices)):

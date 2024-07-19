@@ -12,7 +12,8 @@ import time
 def vis_array(frame, size, cells):
     den_cutoff = .3
     smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
-    
+    smoke_grid = np.abs(smoke_grid / np.max(smoke_grid))
+
     den_array = []
     for cell in cells:
         den_array.append(smoke_grid[int(cell[0]), int(cell[1])])

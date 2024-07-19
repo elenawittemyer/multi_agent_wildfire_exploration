@@ -92,7 +92,7 @@ def normalize_map(map):
     return map / np.sum(np.abs(map))
 
 def _measure_update(cell, size):
-    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .04))
+    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .03))
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
@@ -124,10 +124,10 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 
 def sample_map(size, num_peaks):
     pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
-    pmap = gaussian(size, pos[0], pos[1], 20)
+    pmap = gaussian(size, pos[0], pos[1], 10)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
-        new_peak = gaussian(size, pos[2*i], pos[2*i+1], 20)
+        new_peak = gaussian(size, pos[2*i], pos[2*i+1], 10)
         pmap += new_peak
         peak_indices.append(np.where(new_peak>.1))
     return pmap, peak_indices
@@ -147,16 +147,16 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 3
+agents = 5
 t_f = 100
 t_u = 20
-size = 100
-peaks = 5
+size = 150
+peaks = 10
 
 comp_map, comp_peaks = sample_map(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
@@ -166,8 +166,18 @@ final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
 
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, blackout = True)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f)
 
 path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, entropy = True)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f)
+
