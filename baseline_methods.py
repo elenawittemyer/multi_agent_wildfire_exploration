@@ -74,6 +74,7 @@ def baseline_main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = N
     erg_file = open('data_and_plotting/plotting_data/erg_metric_data.txt', 'w+')
     path_travelled = np.empty(shape=(num_agents, 2) + (0, )).tolist()
     map_sum = []
+    init_pos = init_pos + np.array([size/2, size/2])
 
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
@@ -176,8 +177,3 @@ def noise_mask(map):
 ################################
 ## Testing #####################
 ################################
-
-
-path, i_map, f_map = baseline_main(100, 20, 5, 5, 100, method='lawnmower')
-final_plot(path, i_map, f_map, 5, 100)
-plot_info_reduct(100)

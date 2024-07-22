@@ -1,6 +1,7 @@
 import numpy as onp
 import jax.numpy as np
 from jax import vmap
+from baseline_methods import baseline_main
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
@@ -124,6 +125,7 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 
 def sample_map(size, num_peaks):
     pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
+    pos = np.array([12, 30, 10, 78, 54, 60, 90, 50, 55, 20, 27, 67, 39, 90])
     pmap = gaussian(size, pos[0], pos[1], 10)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
@@ -147,37 +149,29 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 5
+agents = 3
 t_f = 100
 t_u = 20
-size = 150
-peaks = 10
+size = 100
+peaks = 7
 
 comp_map, comp_peaks = sample_map(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos)
+path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method = 'lawnmower')
+final_plot(path, i_map, f_map, agents, size)
+plot_info_reduct(t_f)
+
+path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method='greedy')
+final_plot(path, i_map, f_map, agents, size)
+plot_info_reduct(t_f)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
 final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
+#plot_ergodic_metric()
 plot_info_reduct(t_f)
-
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, blackout = True)
-final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
-plot_info_reduct(t_f)
-
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
-final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
-plot_info_reduct(t_f)
-
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, entropy = True)
-final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
-plot_info_reduct(t_f)
-
