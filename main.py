@@ -125,7 +125,6 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 
 def sample_map(size, num_peaks):
     pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
-    pos = np.array([12, 30, 10, 78, 54, 60, 90, 50, 55, 20, 27, 67, 39, 90])
     pmap = gaussian(size, pos[0], pos[1], 10)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
@@ -173,5 +172,5 @@ path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, pe
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
 final_plot(path, i_map, f_map, agents, t_f)
-#plot_ergodic_metric()
+plot_ergodic_metric()
 plot_info_reduct(t_f)
