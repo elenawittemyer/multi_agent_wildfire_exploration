@@ -53,7 +53,7 @@ class ErgodicTrajectoryOpt(object):
             erg_m = self.erg_metric(ck, phik)
             return 100 * N * erg_m \
                     + .1 * np.mean(u**2) \
-                    + 10 * np.sum(barrier_cost(e))
+                    + 100 * np.sum(barrier_cost(e))
         def eq_constr(z, args):
             """ dynamic equality constriants """
             x, u = z[:, :, :n], z[:, :, n:]

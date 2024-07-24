@@ -5,7 +5,8 @@ from baseline_methods import baseline_main
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from data_and_plotting.plotting import animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
+from data_and_plotting.plotting import animate_dynamic_info, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
+from moving_targets import dynamic_info_init, dynamic_info_step
 from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map, vis_array_b
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import matplotlib.pyplot as plt
@@ -13,13 +14,27 @@ import matplotlib.animation as animation
 import time
 import os
 
-def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init_pos=None, entropy=False, mask_map = False, blackout = False):
-    
+#TODO: right now, target uncertainty resets when targets move and stays constant when targets are stationary. Ask Ananya if this is worth doing,
+# or if all targets should just be constantly moving. Realistically it is worth doing to demonstrate that if a moving target pauses, the robot
+# does not need to re-evaluate its state
+
+def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy=False, mask_map = False, blackout = False, dynamic_info = False):
+
+    init_map = map_params['init_map']
+    peak_pos = map_params['peak_pos']
+    target_pos = map_params['target_pos']
+    target_vel = map_params['target_vel']
+
     if init_pos is None:
         init_pos = sample_initpos(num_agents, size)
+    
     if init_map is None:
-        init_map, peak_pos = sample_map(size, peaks)
-        init_map = noise_mask(init_map)
+        if dynamic_info == True:
+            init_map, peak_pos, target_pos, target_vel = dynamic_info_init(size, peaks)
+            init_map = noise_mask(init_map)
+        else:
+            init_map, peak_pos = sample_map(size, peaks)
+            init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
@@ -37,6 +52,9 @@ def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init
 
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
+
+        with open('data_and_plotting/dynamic_info_data/info_map_' + str(step//t_u) + '.npy', 'wb') as f:
+            np.save(f, pmap)
 
         if entropy == True:
             opt_map = calc_entropy(pmap, size, step)
@@ -74,6 +92,9 @@ def main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init
             plt.show()
         
         init_pos = np.array(new_initpos)
+
+        if dynamic_info == True:
+            pmap, peak_pos, target_pos, target_vel = dynamic_info_step(peaks, size, pmap, peak_pos, target_pos, target_vel)
     
     erg_file.close()
 
@@ -148,15 +169,35 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 3
+agents = 4
 t_f = 100
 t_u = 20
 size = 100
 peaks = 7
 
-comp_map, comp_peaks = sample_map(size, peaks)
+#comp_map, comp_peaks = sample_map(size, peaks)
+comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
+map_params = {
+    'init_map': None,
+    'peak_pos': None,
+    'target_pos': None,
+    'target_vel': None,
+}
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True)
+#path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
+
+#time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
+#animate_plot(size, t_f, path, agents, i_map)
+#animate_vis(size, t_f, i_map, path, agents, comp_peaks)
+animate_dynamic_info(size, t_f, t_u, path, agents)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f) #TODO: make new function that considers dynamic info reduction
+
+'''
 path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method = 'lawnmower')
 final_plot(path, i_map, f_map, agents, size)
 plot_info_reduct(t_f)
@@ -164,13 +205,4 @@ plot_info_reduct(t_f)
 path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method='greedy')
 final_plot(path, i_map, f_map, agents, size)
 plot_info_reduct(t_f)
-
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, mask_map = True)
-#path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
-
-#time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
-#animate_plot(size, t_f, path, agents, i_map)
-#animate_vis(size, t_f, i_map, path, agents, comp_peaks)
-final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
-plot_info_reduct(t_f)
+'''

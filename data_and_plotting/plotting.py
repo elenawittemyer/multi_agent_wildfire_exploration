@@ -56,6 +56,40 @@ def animate_plot(map_size, t_f, pos, num_agents, map_i):
     ani.save(path + "/videos/smoke_multi_agent.mp4", writer=mywriter)
     plt.close(fig)
 
+def animate_dynamic_info(map_size, t_f, t_u, pos, num_agents):
+    cmap = get_colormap(num_agents+1)
+    
+    pos_x = []
+    pos_y = []
+    for i in range(num_agents):
+        pos_x.append(np.array(pos[i][0]).flatten()) 
+        pos_y.append(np.array(pos[i][1]).flatten())
+
+    fig, ax = plt.subplots()
+    path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    den = np.load(path + '/smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_0.npy')
+    info_map = np.load(path + '/dynamic_info_data/info_map_0.npy')
+    img1 = ax.imshow(info_map, origin="lower")
+    img2 = ax.imshow(den, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower', animated = True)
+    for i in range(num_agents):
+        line = [[pos_x[i][0], pos_x[i][1]], [pos_y[i][0], pos_y[i][1]]]
+        traj, = ax.plot(line[0], line[1], c=cmap(i))
+    
+    def updatefig(frame, img1, img2, traj, ax):
+        info_map = np.load(path + '/dynamic_info_data/info_map_' + str(frame//t_u) +'.npy')
+        den = np.load(path + '/smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(frame) + '.npy')
+        img1.set_data(info_map)
+        img2.set_data(den)
+        for i in range(num_agents):
+            line = [[pos_x[i][frame], pos_x[i][frame+1]], [pos_y[i][frame], pos_y[i][frame+1]]]
+            traj, = ax.plot(line[0],line[1], c=cmap(i))
+        return img1, img2, traj
+
+    ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img1, img2, traj, ax), interval=1, blit=True)
+    mywriter = animation.FFMpegWriter(fps = 10)
+    ani.save(path + "/videos/dynamic_info_exploration.mp4", writer=mywriter)
+    plt.close(fig)
+
 def animate_vis(map_size, t_f, map_i, pos, num_agents, peak_idx):
 
     def blackout_map(map, peak_indices, size, frame):
