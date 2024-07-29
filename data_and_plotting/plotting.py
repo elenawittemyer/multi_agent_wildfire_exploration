@@ -242,12 +242,21 @@ def plot_ergodic_metric():
     plt.ylabel('Ergodic Metric')
     plt.show()
 
-def plot_info_reduct(t_f):
+def plot_info_reduct(t_f, t_u, num_agents, dynamic=False):
     path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     with open(path + '/plotting_data/info_map_data.txt', 'r') as file:
         info_sum = np.array(file.read().splitlines()).astype(float)
     time = np.arange(0, t_f, t_f/len(info_sum))
-    print("Info reduction: " + str((1-info_sum[-1]/info_sum[0])*100) + str('%'))
+    if dynamic==True:
+        red_info = []
+        for step in range(t_f//t_u):
+            fin_info = info_sum[(num_agents+1)*(step+1)-1]
+            init_info = info_sum[(num_agents+1)*step]
+            red_info.append((1-fin_info/init_info)*100)
+        avg_info = np.average(np.array(red_info))
+        print("Info reduction: " + str(avg_info) + '%')
+    else:
+        print("Info reduction: " + str((1-info_sum[-1]/info_sum[0])*100) + str('%'))
     plt.plot(time, info_sum)
     plt.xlabel('Time')
     plt.ylabel('Total Map Uncertainty')

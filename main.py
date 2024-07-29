@@ -5,7 +5,7 @@ from baseline_methods import baseline_main
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from data_and_plotting.plotting import animate_dynamic_info, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, smoke_vs_info, time_dstrb_comp, plot_ergodic_metric, plot_info_reduct
+from data_and_plotting.plotting import animate_dynamic_info, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, plot_ergodic_metric, plot_info_reduct
 from moving_targets import dynamic_info_init, dynamic_info_step
 from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map, vis_array_b
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
@@ -91,6 +91,8 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
             ax2.imshow(opt_map, origin='lower')
             plt.show()
         
+        if record_info_red == True:
+                map_sum.append(np.sum(pmap))
         init_pos = np.array(new_initpos)
 
         if dynamic_info == True:
@@ -169,7 +171,7 @@ def noise_mask(map):
 ## Testing #####################
 ################################
 
-agents = 4
+agents = 3
 t_f = 100
 t_u = 20
 size = 100
@@ -180,29 +182,29 @@ comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
 map_params = {
-    'init_map': None,
-    'peak_pos': None,
-    'target_pos': None,
-    'target_vel': None,
+    'init_map': comp_map,
+    'peak_pos': comp_peaks,
+    'target_pos': comp_targets,
+    'target_vel': comp_vel,
 }
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, dynamic_info = True)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
-animate_dynamic_info(size, t_f, t_u, path, agents)
+#animate_dynamic_info(size, t_f, t_u, path, agents)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
-plot_info_reduct(t_f) #TODO: make new function that considers dynamic info reduction
+plot_info_reduct(t_f, t_u, agents)
 
-'''
-path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method = 'lawnmower')
-final_plot(path, i_map, f_map, agents, size)
-plot_info_reduct(t_f)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f, t_u, agents)
 
-path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, init_map = comp_map, peak_pos = comp_peaks, init_pos = comp_pos, method='greedy')
-final_plot(path, i_map, f_map, agents, size)
-plot_info_reduct(t_f)
-'''
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = True)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f, t_u, agents)

@@ -15,15 +15,35 @@ def dynamic_info_init(size, num_targets):
         peak_indices.append(np.where(new_peak>.1))
     pos = np.reshape(pos, (num_targets, 2))
 
-    vel = onp.random.uniform(onp.random.uniform(0, 20, 2*num_targets))
+    vel = onp.random.uniform(onp.random.uniform(0, 10, 2*num_targets))
     vel = np.reshape(vel, (num_targets, 2))
     return pmap, peak_indices, pos, vel
 
 def dynamic_info_step(num_targets, size, pmap=None, peak_indices = None, target_pos=None, vel=None):
-    if map==None:
+    if pmap==None:
         pmap, peak_indices, target_pos, vel = dynamic_info_init(num_targets, size)
     else:
-        static_targets = onp.random.randint(0, 2, num_targets)
+        '''
+        new_map = np.zeros((size, size))
+        new_peak_idxs = []
+        target_pos = np.clip(target_pos + vel, 2, size-2)
+    
+        for k in range(num_targets):
+            new_peak_idx_x = np.round(np.clip(peak_indices[k][0]+vel[k][0], 2, size-2)).astype(int)
+            new_peak_idx_y = np.round(np.clip(peak_indices[k][1]+vel[k][1], 2, size-2)).astype(int)
+            new_peak_idx = (new_peak_idx_x, new_peak_idx_y)
+            new_map = new_map.at[new_peak_idx].set(pmap[peak_indices[k]])
+            new_peak_idxs.append(new_peak_idx)
+        
+        zero_indices = np.where(target_pos==2)
+        max_indices = np.where(target_pos==size-2)
+        vel[zero_indices] *= -1
+        vel[max_indices] *= -1
+
+        return new_map, new_peak_idxs, target_pos, vel
+
+        '''
+        static_targets = onp.random.choice(2, num_targets, p=[0.5, 0.5])
         temp_vel = np.multiply(vel, np.hstack((np.array([static_targets]).T, np.array([static_targets]).T)))
 
         new_map = np.zeros((size, size))
@@ -45,6 +65,7 @@ def dynamic_info_step(num_targets, size, pmap=None, peak_indices = None, target_
                 new_peak_idx.append(np.where(new_peak>.1))
 
     return new_map, new_peak_idx, target_pos, vel
+    
 
 '''
 map, peak_idx, target_pos, target_vel = dynamic_info_init(5, 100)

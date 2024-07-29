@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import time
 import os
 
+from moving_targets import dynamic_info_init, dynamic_info_step
 from smoke import vis_array, vis_array_b
 
 def greedy_step(info_map, starts, N, t_u, max_step):
@@ -54,12 +55,22 @@ def lawnmower_step(info_map, starts, N, t_u, step=1):
     multi_traj = np.array(multi_traj)
     return multi_traj
 
-def baseline_main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = None, init_pos=None, method='greedy'):
+def baseline_main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, dynamic_info = False, method='greedy'):
+
+    init_map = map_params['init_map']
+    peak_pos = map_params['peak_pos']
+    target_pos = map_params['target_pos']
+    target_vel = map_params['target_vel']
+
     if init_pos is None:
         init_pos = sample_initpos(num_agents, size)
     if init_map is None:
-        init_map, peak_pos = sample_map(size, peaks)
-        init_map = noise_mask(init_map)
+        if dynamic_info == True:
+            init_map, peak_pos, target_pos, target_vel = dynamic_info_init(size, peaks)
+            init_map = noise_mask(init_map)
+        else:
+            init_map, peak_pos = sample_map(size, peaks)
+            init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
@@ -78,6 +89,10 @@ def baseline_main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = N
 
     for step in range(0, t_f, t_u):
         print(str(step/t_f*100) + "% complete")
+
+        with open('data_and_plotting/dynamic_info_data/info_map_' + str(step//t_u) + '.npy', 'wb') as f:
+            np.save(f, pmap)
+        
         new_initpos = []
         for i in range(num_agents):
             if record_info_red == True:
@@ -105,7 +120,12 @@ def baseline_main(t_f, t_u, peaks, num_agents, size, init_map=None, peak_pos = N
             ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
             plt.show()
         
+        if record_info_red == True:
+                map_sum.append(np.sum(pmap))
         init_pos = np.array(new_initpos)
+
+        if dynamic_info == True:
+            pmap, peak_pos, target_pos, target_vel = dynamic_info_step(peaks, size, pmap, peak_pos, target_pos, target_vel)
     
     erg_file.close()
 
