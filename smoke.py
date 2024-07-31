@@ -1,10 +1,12 @@
 from jax import vmap
 import jax.numpy as np
+import jax.scipy as jsp
 import numpy as onp
 import matplotlib.pyplot as plt
-from gaussian import gaussian_1d, gaussian
+from gaussian import gaussian_1d, gaussian, gaussian_filter
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
 import os
+import cv2
 import time
 
 ## Collect new data: gen_smoke(log_data=True, grid_size=100)
@@ -91,17 +93,24 @@ def pdf(V, x, args):
         vis = 1-den/np.max(den)
     
     C = vis[x[0], x[1]]
-    
+
+    # apply gaussian filter
+    gauss_prob = gaussian_1d(10, 4.5, 4.5)
+    gauss_prob /= np.sum(gauss_prob)
+    v_noise_avg = np.sum(np.multiply(V, gauss_prob))
+    V_noise_adj = v_noise_avg*np.ones(10)
+
     # create gaussian peak centered at visibility coefficient
-    v_true = V[int(len(V)/2)]
-    spread = 100/v_true
+    spread = 100/v_noise_avg
     rad = spread/2 # smoke vs peak effect seems balanced?
     pdf_V = []
     gauss_peak = gaussian_1d(200, C*100, rad)
-
+    
     # find probability of observing each measurement in possible measurement values
-    for v in V:
+    for v in V_noise_adj:
         pdf_V.append(gauss_peak[(np.int32(v*spread))])
+    pdf_V = np.array(pdf_V)
+
     return np.array(pdf_V)
 
 def _shannon_entropy(V, x, map_args):
@@ -111,7 +120,7 @@ def _shannon_entropy(V, x, map_args):
 
 shannon_entropy = vmap(_shannon_entropy, in_axes=(0, 0, None))
 
-def calc_entropy(map, size, frame):
+def calc_entropy(map, size, frame, noise_on = True):
     args = {
     'frame': frame,
     'size': size
@@ -128,36 +137,65 @@ def calc_entropy(map, size, frame):
 
     v_array = eval_map(out, map)
 
-    # calculate possible measurement values, accounting for noise
-    def _measure_noise(v):
-        noise = v/5
-        return np.linspace(v-noise, v+noise, 10)
-    measure_noise = vmap(_measure_noise, in_axes=0)
+    # calculate possible measurement values, adding in noise
+    def measure_noise(v, noise_on):
+        if noise_on == True:
+            return onp.random.normal(v, .2, 10)
+        else:
+            return onp.random.normal(v, 0, 10)
 
-    V_array = measure_noise(v_array)
+    V_array = []
+    for v in v_array:
+        V_array.append(np.sort(measure_noise(v, noise_on)))
+    V_array = np.array(V_array)
 
     # calculate shannon entropy at all coordinates
     info_grid = shannon_entropy(V_array, out, args)
     info_grid = info_grid.reshape((args['size'], args['size']))
 
     '''
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.imshow(info_grid, origin='lower')
-    ax2.imshow(map, origin='lower')
+    denoised_info = cv2.fastNlMeansDenoising(onp.uint8(onp.copy(info_grid)), None, h=.1, templateWindowSize=7, searchWindowSize=21)   
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    ax2.imshow(info_grid, origin='lower')
+    ax1.imshow(map, origin='lower')
     den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
-    ax2.imshow(den, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+    ax1.imshow(den, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+    ax3.imshow(denoised_info, origin='lower')
     plt.show()
     '''
-
+    
     return info_grid
 
-def calc_mask_map(map, size, frame):
+def calc_mask_map(map, size, frame, noise_on = True):
     den_cutoff = .3
+
+    X,Y = onp.meshgrid(onp.arange(size), onp.arange(size))
+    out = onp.column_stack((Y.ravel(), X.ravel()))
+
+    # find info measurement at all coordinates
+    def _eval_map(x, map):
+        return map[x[0], x[1]]
+    eval_map = vmap(_eval_map, in_axes=(0, None))
+
+    v_array = eval_map(out, map)
+
+    # apply noise to measurement
+    def measure_noise(v):
+        if noise_on == True:
+            return np.abs(onp.random.normal(v, .2))
+        else:
+            return np.abs(onp.random.normal(v, 0))
+    v_noise_array = []
+    for v in v_array:
+        v_noise_array.append(measure_noise(v))
+    v_noise_array = np.array(v_noise_array)
+    noisy_map = np.reshape(v_noise_array, (size, size))
     
+    # apply visibility coefficients to noisy map
     den = np.abs(np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy'))
     den_norm = den/np.max(den)
     vis_red = np.maximum((den_cutoff-den_norm)/den_cutoff, np.zeros(den.shape))
-    mask_map = np.multiply(vis_red, map)
+    mask_map = np.multiply(vis_red, noisy_map)
 
     '''
     fig, (ax1, ax2) = plt.subplots(1, 2)

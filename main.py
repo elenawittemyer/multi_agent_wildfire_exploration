@@ -18,7 +18,7 @@ import os
 # or if all targets should just be constantly moving. Realistically it is worth doing to demonstrate that if a moving target pauses, the robot
 # does not need to re-evaluate its state
 
-def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy=False, mask_map = False, blackout = False, dynamic_info = False):
+def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy=False, mask_map = False, blackout = False, dynamic_info = False, noise = True):
 
     init_map = map_params['init_map']
     peak_pos = map_params['peak_pos']
@@ -31,13 +31,11 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
     if init_map is None:
         if dynamic_info == True:
             init_map, peak_pos, target_pos, target_vel = dynamic_info_init(size, peaks)
-            init_map = noise_mask(init_map)
         else:
             init_map, peak_pos = sample_map(size, peaks)
-            init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
-    plot_prog = False
+    plot_prog = True
     record_info_red = True
 
     if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
@@ -57,13 +55,13 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
             np.save(f, pmap)
 
         if entropy == True:
-            opt_map = calc_entropy(pmap, size, step)
+            opt_map = calc_entropy(pmap, size, step, noise)
         elif mask_map == True:
-            opt_map = calc_mask_map(pmap, size, step)
+            opt_map = calc_mask_map(pmap, size, step, noise)
         elif blackout == True:
             opt_map = blackout_map(pmap, peak_pos, size, step)
         else:
-            opt_map = pmap
+            opt_map = apply_meas_noise(pmap, size, noise)
 
         traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size, erg_file)
         for k in range(100):
@@ -162,10 +160,31 @@ def sample_initpos(num_agents, size):
 def sample_vis_coeff():
     return .2
 
-def noise_mask(map):
-    noise = onp.random.uniform(1E-3, 1E-2, map.shape)
-    noise = np.reshape(noise, map.shape)
-    return map+noise
+def apply_meas_noise(map, size, noise_on):
+    X,Y = onp.meshgrid(onp.arange(size), onp.arange(size))
+    out = onp.column_stack((Y.ravel(), X.ravel()))
+
+    # find info measurement at all coordinates
+    def _eval_map(x, map):
+        return map[x[0], x[1]]
+    eval_map = vmap(_eval_map, in_axes=(0, None))
+
+    v_array = eval_map(out, map)
+
+    # calculate possible measurement values, adding in noise
+    def measure_noise(v):
+        if noise_on == True:
+            return np.abs(onp.random.normal(v, .2))
+        else:
+            return np.abs(onp.random.normal(v, 0))
+        
+    v_noise_array = []
+    for v in v_array:
+        v_noise_array.append(measure_noise(v))
+    v_noise_array = np.array(v_noise_array)
+    noisy_map = np.reshape(v_noise_array, (size, size))
+    
+    return noisy_map
 
 ################################
 ## Testing #####################
@@ -177,34 +196,36 @@ t_u = 20
 size = 100
 peaks = 7
 
-#comp_map, comp_peaks = sample_map(size, peaks)
-comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
+comp_map, comp_peaks = sample_map(size, peaks)
+#comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
 map_params = {
     'init_map': comp_map,
     'peak_pos': comp_peaks,
-    'target_pos': comp_targets,
-    'target_vel': comp_vel,
+    'target_pos': None,
+    'target_vel': None,
 }
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, dynamic_info = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, dynamic_info = False, noise = True)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
-#animate_dynamic_info(size, t_f, t_u, path, agents)
+animate_dynamic_info(size, t_f, t_u, path, agents)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = False, noise = True)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = True)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = False, noise = True)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
