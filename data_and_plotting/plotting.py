@@ -141,6 +141,21 @@ def animate_vis(map_size, t_f, map_i, pos, num_agents, peak_idx):
     ani.save(path + "/videos/smoke_info_visibility.mp4", writer=mywriter)
     plt.close(fig)
 
+def animate_targets(t_f, t_u):
+    fig, ax = plt.subplots()
+    path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    info_map = np.load(path + '/dynamic_info_data/info_map_0.npy')
+    img1 = ax.imshow(info_map, origin="lower")
+    def updatefig(frame, img1, ax):
+        info_map = np.load(path + '/dynamic_info_data/info_map_' + str(frame//t_u) +'.npy')
+        img1.set_data(info_map)
+        return img1,
+
+    ani = animation.FuncAnimation(fig, updatefig, frames=t_f-1, fargs=(img1, ax), interval=1, blit=True)
+    mywriter = animation.FFMpegWriter(fps = 10)
+    ani.save(path + "/videos/moving_targets.mp4", writer=mywriter)
+    plt.close(fig)
+
 def smoke_vs_info(map_size, t_f, path, init_map, num_agents):
     time_map = np.zeros((map_size, map_size))
     smoke_sum = np.zeros((map_size, map_size))

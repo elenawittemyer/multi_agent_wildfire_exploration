@@ -140,9 +140,9 @@ def calc_entropy(map, size, frame, noise_on = True):
     # calculate possible measurement values, adding in noise
     def measure_noise(v, noise_on):
         if noise_on == True:
-            return onp.random.normal(v, .2, 10)
+            return onp.random.normal(v, .15, 10)
         else:
-            return onp.random.normal(v, 0, 10)
+            return v*np.ones(10)
 
     V_array = []
     for v in v_array:
@@ -164,7 +164,7 @@ def calc_entropy(map, size, frame, noise_on = True):
     plt.show()
     '''
     
-    return info_grid
+    return np.multiply(info_grid, info_grid)
 
 def calc_mask_map(map, size, frame, noise_on = True):
     den_cutoff = .3
@@ -182,9 +182,9 @@ def calc_mask_map(map, size, frame, noise_on = True):
     # apply noise to measurement
     def measure_noise(v):
         if noise_on == True:
-            return np.abs(onp.random.normal(v, .2))
+            return np.abs(onp.random.normal(v, .15))
         else:
-            return np.abs(onp.random.normal(v, 0))
+            return v
     v_noise_array = []
     for v in v_array:
         v_noise_array.append(measure_noise(v))

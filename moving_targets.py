@@ -15,7 +15,7 @@ def dynamic_info_init(size, num_targets):
         peak_indices.append(np.where(new_peak>.1))
     pos = np.reshape(pos, (num_targets, 2))
 
-    vel = onp.random.uniform(onp.random.uniform(0, 10, 2*num_targets))
+    vel = onp.random.uniform(onp.random.uniform(0, 20, 2*num_targets))
     vel = np.reshape(vel, (num_targets, 2))
     return pmap, peak_indices, pos, vel
 

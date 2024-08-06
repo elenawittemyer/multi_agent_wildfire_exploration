@@ -55,7 +55,7 @@ def lawnmower_step(info_map, starts, N, t_u, step=1):
     multi_traj = np.array(multi_traj)
     return multi_traj
 
-def baseline_main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, dynamic_info = False, method='greedy'):
+def baseline_main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, dynamic_info = False, method='greedy', noise_on = True):
 
     init_map = map_params['init_map']
     peak_pos = map_params['peak_pos']
@@ -67,10 +67,8 @@ def baseline_main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None
     if init_map is None:
         if dynamic_info == True:
             init_map, peak_pos, target_pos, target_vel = dynamic_info_init(size, peaks)
-            init_map = noise_mask(init_map)
         else:
             init_map, peak_pos = sample_map(size, peaks)
-            init_map = noise_mask(init_map)
     cmap = get_colormap(num_agents+1)
 
     plot_prog = False
@@ -99,9 +97,9 @@ def baseline_main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None
                 map_sum.append(np.sum(pmap))
 
             if method == 'greedy':
-                sol = greedy_step(pmap, init_pos, num_agents, t_u, 10)
+                sol = greedy_step(apply_meas_noise(pmap, size, noise_on), init_pos, num_agents, t_u, 10)
             elif method == 'lawnmower':
-                sol = lawnmower_step(pmap, init_pos, num_agents, t_u, 10)
+                sol = lawnmower_step(apply_meas_noise(pmap, size, noise_on), init_pos, num_agents, t_u, 10)
             else:
                 print('unknown method')
                 break
@@ -146,7 +144,7 @@ def normalize_map(map):
     return map / np.sum(np.abs(map))
 
 def _measure_update(cell, size):
-    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], .03))
+    reduction = np.array(gaussian_measurement(size, cell[0], cell[1], 0.03))
     return reduction
 measure_update = vmap(_measure_update, in_axes=(0, None))
 
@@ -189,10 +187,31 @@ def sample_map(size, num_peaks):
 def sample_initpos(num_agents, size):
     return onp.random.uniform(0, size, (num_agents, 2))
 
-def noise_mask(map):
-    noise = onp.random.uniform(1E-3, 1E-2, map.shape)
-    noise = np.reshape(noise, map.shape)
-    return map+noise
+def apply_meas_noise(map, size, noise_on):
+    X,Y = onp.meshgrid(onp.arange(size), onp.arange(size))
+    out = onp.column_stack((Y.ravel(), X.ravel()))
+
+    # find info measurement at all coordinates
+    def _eval_map(x, map):
+        return map[x[0], x[1]]
+    eval_map = vmap(_eval_map, in_axes=(0, None))
+
+    v_array = eval_map(out, map)
+
+    # calculate possible measurement values, adding in noise
+    def measure_noise(v):
+        if noise_on == True:
+            return np.abs(onp.random.normal(v, .15))
+        else:
+            return v
+        
+    v_noise_array = []
+    for v in v_array:
+        v_noise_array.append(measure_noise(v))
+    v_noise_array = np.array(v_noise_array)
+    noisy_map = np.reshape(v_noise_array, (size, size))
+    
+    return noisy_map
 
 ################################
 ## Testing #####################

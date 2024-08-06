@@ -5,7 +5,7 @@ from baseline_methods import baseline_main
 from erg_expl import ErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
-from data_and_plotting.plotting import animate_dynamic_info, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, plot_ergodic_metric, plot_info_reduct
+from data_and_plotting.plotting import animate_dynamic_info, animate_targets, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, plot_ergodic_metric, plot_info_reduct
 from moving_targets import dynamic_info_init, dynamic_info_step
 from smoke import vis_array, calc_entropy, calc_mask_map, blackout_map, vis_array_b
 from data_and_plotting.fluid_engine_dev.src.examples.python_examples.smoke_example01 import gen_smoke
@@ -14,9 +14,7 @@ import matplotlib.animation as animation
 import time
 import os
 
-#TODO: right now, target uncertainty resets when targets move and stays constant when targets are stationary. Ask Ananya if this is worth doing,
-# or if all targets should just be constantly moving. Realistically it is worth doing to demonstrate that if a moving target pauses, the robot
-# does not need to re-evaluate its state
+#TODO: get data comparison for sensor noise model. Implement sensor noise into greedy/lawnmower methods.
 
 def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy=False, mask_map = False, blackout = False, dynamic_info = False, noise = True):
 
@@ -35,7 +33,7 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
             init_map, peak_pos = sample_map(size, peaks)
     cmap = get_colormap(num_agents+1)
 
-    plot_prog = True
+    plot_prog = False
     record_info_red = True
 
     if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
@@ -145,7 +143,7 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 ################################
 
 def sample_map(size, num_peaks):
-    pos = np.floor(onp.random.uniform(0, size, 2*num_peaks))
+    pos = np.floor(onp.random.uniform(5, size-5, 2*num_peaks))
     pmap = gaussian(size, pos[0], pos[1], 10)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
@@ -174,7 +172,7 @@ def apply_meas_noise(map, size, noise_on):
     # calculate possible measurement values, adding in noise
     def measure_noise(v):
         if noise_on == True:
-            return np.abs(onp.random.normal(v, .2))
+            return np.abs(onp.random.normal(v, .15))
         else:
             return np.abs(onp.random.normal(v, 0))
         
@@ -193,39 +191,48 @@ def apply_meas_noise(map, size, noise_on):
 agents = 3
 t_f = 100
 t_u = 20
-size = 100
+size = 160
 peaks = 7
 
-comp_map, comp_peaks = sample_map(size, peaks)
-#comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
+#comp_map, comp_peaks = sample_map(size, peaks)
+comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
 map_params = {
     'init_map': comp_map,
     'peak_pos': comp_peaks,
-    'target_pos': None,
-    'target_vel': None,
+    'target_pos': comp_targets,
+    'target_vel': comp_vel
 }
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, dynamic_info = False, noise = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True, noise = False)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
 animate_dynamic_info(size, t_f, t_u, path, agents)
+final_plot(path, i_map, i_map, agents, t_f)
+plot_ergodic_metric()
+plot_info_reduct(t_f, t_u, agents)
+
+'''
+path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, method = 'lawnmower', dynamic_info = True, noise_on = True)
 final_plot(path, i_map, f_map, agents, t_f)
+plot_info_reduct(t_f, t_u, agents)
+
+path, i_map, f_map = baseline_main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, method = 'greedy', dynamic_info = True, noise_on = True)
+final_plot(path, i_map, f_map, agents, t_f)
+plot_info_reduct(t_f, t_u, agents)
+
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = False, noise = False)
+final_plot(path, i_map, i_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
 
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = False, noise = True)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = True, noise = True)
 final_plot(path, i_map, f_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
-
-
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = False, noise = True)
-final_plot(path, i_map, f_map, agents, t_f)
-plot_ergodic_metric()
-plot_info_reduct(t_f, t_u, agents)
+'''
