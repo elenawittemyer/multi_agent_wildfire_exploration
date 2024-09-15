@@ -33,7 +33,7 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
             init_map, peak_pos = sample_map(size, peaks)
     cmap = get_colormap(num_agents+1)
 
-    plot_prog = False
+    plot_prog = True
     record_info_red = True
 
     if os.path.isdir('data_and_plotting/smoke_density/smoke_grid_' + str(size)) == False:
@@ -82,7 +82,18 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
             fig, (ax1, ax2) = plt.subplots(1, 2)
             ax1.imshow(pmap, origin="lower")
             for i in range(num_agents):
-                ax1.plot(np.array(path_travelled[i][0]).flatten(), np.array(path_travelled[i][1]).flatten(), c=cmap(i))
+                x_traj = np.array(path_travelled[i][0]).flatten()
+                y_traj = np.array(path_travelled[i][1]).flatten()
+
+                if step==0:
+                    ax1.plot(x_traj, y_traj, c=cmap(i))
+                    ax2.plot(x_traj, y_traj, c=cmap(i))
+                else:
+                    ax1.plot(x_traj[0:len(x_traj)-20], y_traj[0:len(x_traj)-20], c=cmap(i), alpha=0.3)
+                    ax1.plot(x_traj[len(x_traj)-20:], y_traj[len(x_traj)-20:], c=cmap(i))
+                    ax2.plot(x_traj[0:len(x_traj)-20], y_traj[0:len(x_traj)-20], c=cmap(i), alpha=0.3)
+                    ax2.plot(x_traj[len(x_traj)-20:], y_traj[len(x_traj)-20:], c=cmap(i))
+            
             ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
             ax2.imshow(opt_map, origin='lower')
             plt.show()
@@ -144,6 +155,7 @@ weight_mult = vmap(_weight_mult, in_axes=(0, 0))
 
 def sample_map(size, num_peaks):
     pos = np.floor(onp.random.uniform(5, size-5, 2*num_peaks))
+    pos = np.array([10, 10, 12, 80, 40, 55, 62, 10, 65, 60, 82, 90])
     pmap = gaussian(size, pos[0], pos[1], 10)
     peak_indices = [np.where(pmap>.1)]
     for i in range(1, num_peaks):
@@ -189,29 +201,29 @@ def apply_meas_noise(map, size, noise_on):
 ################################
 
 agents = 3
-t_f = 100
-t_u = 20
-size = 160
-peaks = 7
+t_f = 200
+t_u = 40
+size = 100
+peaks = 6
 
-#comp_map, comp_peaks = sample_map(size, peaks)
-comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
+comp_map, comp_peaks = sample_map(size, peaks)
+#comp_map, comp_peaks, comp_targets, comp_vel = dynamic_info_init(size, peaks)
 comp_pos = sample_initpos(agents, size)
 
 map_params = {
     'init_map': comp_map,
     'peak_pos': comp_peaks,
-    'target_pos': comp_targets,
-    'target_vel': comp_vel
+    'target_pos': None, #comp_targets
+    'target_vel': None #comp_vel
 }
 
-path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, mask_map = True, dynamic_info = True, noise = False)
+path, i_map, f_map = main(t_f, t_u, peaks, agents, size, map_params, init_pos = comp_pos, entropy = True, dynamic_info = False, noise = False)
 #path_ns, i_map, f_map_ns = main(t_f, t_u, peaks, agents, size, smoke_state=False, init_map=comp_map, init_pos=comp_pos)
 
 #time_dstrb_comp(size, t_f, i_map, path_ns, path, agents, f_map, f_map_ns)
 #animate_plot(size, t_f, path, agents, i_map)
 #animate_vis(size, t_f, i_map, path, agents, comp_peaks)
-animate_dynamic_info(size, t_f, t_u, path, agents)
+#animate_dynamic_info(size, t_f, t_u, path, agents)
 final_plot(path, i_map, i_map, agents, t_f)
 plot_ergodic_metric()
 plot_info_reduct(t_f, t_u, agents)
