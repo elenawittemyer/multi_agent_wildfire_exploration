@@ -17,8 +17,8 @@ from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import time
     
-class ErgodicTrajectoryOpt(object):
-    def __init__(self, initpos, pmap, num_agents, size, f) -> None:
+class MultiErgodicTrajectoryOpt(object):
+    def __init__(self, initpos, pmap, num_agents, size, f, max_step=10) -> None:
         time_horizon=40
         self.basis           = BasisFunc(n_basis=[5,5])
         self.erg_metric      = ErgodicMetric(self.basis)
@@ -29,7 +29,8 @@ class ErgodicTrajectoryOpt(object):
             'x0' : initpos,
             'xf' : initpos,
             #'xf' : np.zeros((N, 2)),
-            'phik' : get_phik(self.target_distr.evals, self.basis)
+            'phik' : get_phik(self.target_distr.evals, self.basis),
+            'ctrl_lim' : max_step
         }
         ''' Initialize state '''
         x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
@@ -65,11 +66,11 @@ class ErgodicTrajectoryOpt(object):
                 (x[-1] - xf).flatten()
             ])
 
-        def ineq_constr(z,args):
+        def ineq_constr(z, args):
             """ control inequality constraints"""
+            ctrl_lim = args['ctrl_lim']
             x, u = z[:, :, :n], z[:, :, n:]
-            #_g = np.max(np.array([abs(u)-10, .5-abs(u)]))
-            _g =  abs(u)-10
+            _g =  abs(u)-ctrl_lim
             return _g
 
         self.solver = AugmentedLagrangian(
@@ -83,3 +84,70 @@ class ErgodicTrajectoryOpt(object):
                                             c=1.0
                     )
         # self.solver.solve()
+
+
+class SingleErgodicTrajectoryOpt(object):
+    def __init__(self, initpos, pmap, size, f, max_step=10) -> None:
+        time_horizon=40
+        self.basis           = BasisFunc(n_basis=[5,5])
+        self.erg_metric      = ErgodicMetric(self.basis)
+        self.robot_model     = SingleIntegrator(1)
+        n,m = self.robot_model.n, self.robot_model.m
+        self.target_distr    = TargetDistribution(pmap, size)
+        opt_args = {
+            'x0' : np.array(initpos),
+            'xf' : np.array(initpos),
+            'phik' : get_phik(self.target_distr.evals, self.basis),
+            'ctrl_lim' : max_step
+        }
+        x = np.ones((time_horizon, self.robot_model.n)) * opt_args['x0']
+        x = np.linspace(opt_args['x0'], opt_args['xf'], time_horizon, endpoint=True)
+        u = np.zeros((time_horizon, self.robot_model.m))
+        self.init_sol = np.concatenate([x, u], axis=1) 
+
+        @vmap
+        def emap(x):
+            """ Function that maps states to workspace """
+            return np.array([(x[0]+size/2)/100, (x[1]+size/2)/size])
+        def barrier_cost(e):
+            """ Barrier function to avoid robot going out of workspace """
+            return (np.maximum(0, e-1) + np.maximum(0, -e))**2
+        @jit
+        def loss(z, args):
+            """ Traj opt loss function, not the same as erg metric """
+            x, u = z[:, :n], z[:, n:]
+            phik = args['phik']
+            e = emap(x)
+            ck = get_ck(e, self.basis)
+            return 100*self.erg_metric(ck, phik) \
+                    + 0.01 * np.mean(u**2) \
+                    + np.sum(barrier_cost(e))
+
+        def eq_constr(z, args):
+            """ dynamic equality constriants """
+            x, u = z[:, :n], z[:, n:]
+            x0 = args['x0']
+            xf = args['xf']
+            return np.vstack([
+                x[0]-x0, 
+                x[1:,:]-vmap(self.robot_model._f)(x[:-1,:], u[:-1,:]),
+                x[-1] - xf
+            ])
+
+        def ineq_constr(z,args):
+            ctrl_lim = args['ctrl_lim']
+            x, u = z[:, :n], z[:, n:]
+            _g =  abs(u)-ctrl_lim
+            return _g
+
+
+        self.solver = AugmentedLagrangian(
+                                            self.init_sol,
+                                            loss, 
+                                            eq_constr, 
+                                            ineq_constr,
+                                            f, 
+                                            opt_args, 
+                                            step_size=0.01,
+                                            c=1.0
+                    )

@@ -2,7 +2,7 @@ import numpy as onp
 import jax.numpy as np
 from jax import vmap
 from baseline_methods import baseline_main
-from erg_expl import ErgodicTrajectoryOpt
+from erg_expl import SingleErgodicTrajectoryOpt, MultiErgodicTrajectoryOpt
 from IPython.display import clear_output
 from gaussian import gaussian, gaussian_measurement
 from data_and_plotting.plotting import animate_dynamic_info, animate_targets, animate_vis, basic_path_plot, get_colormap, animate_plot, final_plot, plot_ergodic_metric, plot_info_reduct
@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
 import os
-
-#TODO: get data comparison for sensor noise model. Implement sensor noise into greedy/lawnmower methods.
 
 def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy=False, mask_map = False, blackout = False, dynamic_info = False, noise = True):
 
@@ -61,7 +59,7 @@ def main(t_f, t_u, peaks, num_agents, size, map_params, init_pos = None, entropy
         else:
             opt_map = apply_meas_noise(pmap, size, noise)
 
-        traj_opt = ErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size, erg_file)
+        traj_opt = MultiErgodicTrajectoryOpt(np.floor(init_pos), opt_map, num_agents, size, erg_file)
         for k in range(100):
             traj_opt.solver.solve(max_iter=1000)
             sol = traj_opt.solver.get_solution()
@@ -200,7 +198,7 @@ def apply_meas_noise(map, size, noise_on):
 ## Testing #####################
 ################################
 
-agents = 3
+agents = 1
 t_f = 200
 t_u = 40
 size = 100

@@ -6,7 +6,10 @@ import os
 def get_colormap(n, name='hsv'):
     return plt.cm.get_cmap(name, n)
 
-def final_plot(x, map_i, map_f, N, t_f):
+def final_plot(x, map_i, map_f, N, t_f, speeds=None, plot_speeds = False):
+    if speeds is None:
+        speeds = 10*np.ones(N)
+    
     fig, (ax1, ax2) = plt.subplots(1, 2)
     ax1.imshow(map_f, origin="lower")
     cmap = get_colormap(N+1)
@@ -14,7 +17,7 @@ def final_plot(x, map_i, map_f, N, t_f):
 
     starts = []
     for i in range(N):
-        ax1.plot(np.array(x[i][0]).flatten(), np.array(x[i][1]).flatten(), c=cmap(i))
+        ax1.plot(np.array(x[i][0]).flatten(), np.array(x[i][1]).flatten(), c=cmap(i), label='Speed: '+ str(np.round(speeds[i], 2)))
         starts.append(plt.Circle(((np.array(x[i][0]).flatten()[0], np.array(x[i][1]).flatten()[0])), .3, color='w'))
         ax1.add_patch(starts[i])
     
@@ -22,7 +25,20 @@ def final_plot(x, map_i, map_f, N, t_f):
     path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     smoke_grid = np.load(path + '/smoke_density/smoke_grid_' + str(map_size) + '/smoke_array_' + str(t_f) + '.npy')
     ax1.imshow(smoke_grid, vmin=0, vmax=1, alpha = .5, cmap=plt.cm.gray, interpolation='nearest', origin='lower')
+    
+    if plot_speeds == True:
+        ax1.legend(bbox_to_anchor=(2, 1.55))
 
+    plt.show()
+
+def freq_plot(x, freq_maps, N):
+    maps = []
+    fig, axs = plt.subplots(2, 3)
+    cmap = get_colormap(N+1)
+    for i in range(N):
+        ax = axs[i//3, i%3]
+        ax.plot(np.array(x[i][0]).flatten(), np.array(x[i][1]).flatten(), marker='o', markersize=3, c=cmap(i))
+        ax.imshow(freq_maps[i], origin='lower')
     plt.show()
 
 def animate_plot(map_size, t_f, pos, num_agents, map_i):

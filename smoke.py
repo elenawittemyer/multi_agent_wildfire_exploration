@@ -11,8 +11,7 @@ import time
 
 ## Collect new data: gen_smoke(log_data=True, grid_size=100)
 
-def vis_array(frame, size, cells):
-    den_cutoff = .3
+def vis_array(frame, size, cells, den_cutoff = .3):
     smoke_grid = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
     smoke_grid = np.abs(smoke_grid / np.max(smoke_grid))
 
@@ -31,9 +30,7 @@ def vis_array(frame, size, cells):
 
     return vis_array
 
-def vis_array_b(frame, size, cells, peak_indices):
-    den_cutoff = .3
-
+def vis_array_b(frame, size, cells, peak_indices, den_cutoff = .3):
     peaks = np.empty((0, 2))
     change_idx = []
     change_sum = 0
@@ -80,8 +77,8 @@ def safety_cost(frame, size, x):
 def pdf(V, x, args):
     frame = args['frame']
     size = args['size']
+    den_cutoff = args['den_cutoff']
     avoid_smoke = True
-    den_cutoff = .3
 
     # load smoke density grid and calculate visibility at measurement location
     den = np.abs(np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy'))
@@ -120,10 +117,11 @@ def _shannon_entropy(V, x, map_args):
 
 shannon_entropy = vmap(_shannon_entropy, in_axes=(0, 0, None))
 
-def calc_entropy(map, size, frame, noise_on = True):
+def calc_entropy(map, size, frame, noise_on = True, den_cutoff = .3):
     args = {
     'frame': frame,
-    'size': size
+    'size': size,
+    'den_cutoff': den_cutoff
     }
 
     # create coordinate grid for exploration space
@@ -166,9 +164,7 @@ def calc_entropy(map, size, frame, noise_on = True):
     
     return np.multiply(info_grid, info_grid)
 
-def calc_mask_map(map, size, frame, noise_on = True):
-    den_cutoff = .3
-
+def calc_mask_map(map, size, frame, noise_on = True, den_cutoff = .3):
     X,Y = onp.meshgrid(onp.arange(size), onp.arange(size))
     out = onp.column_stack((Y.ravel(), X.ravel()))
 
@@ -209,8 +205,7 @@ def calc_mask_map(map, size, frame, noise_on = True):
     return mask_map
 
 
-def blackout_map(info_map, peak_indices, size, frame):
-    den_cutoff = .3
+def blackout_map(info_map, peak_indices, size, frame, den_cutoff = .3):
     map = onp.copy(info_map)
 
     den = np.load('data_and_plotting/smoke_density/smoke_grid_' + str(size) + '/smoke_array_' + str(frame) + '.npy')
